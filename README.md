@@ -4,6 +4,13 @@ Dashboard estático que cruza as **inversões gerenciais** do ERP com o **orçam
 aprovado** do centro de custo 2930. Não tem servidor, não tem build, não usa
 biblioteca nenhuma: dá para publicar no GitHub Pages e abrir por link.
 
+> **Recorte operacional.** As contas de pessoal e folha ficam fora: salário,
+> INSS, FGTS, IRRF, férias, 13º, rescisões, plano de saúde e odontológico,
+> seguro de vida, alimentação, vale transporte, benefícios, consignado, pensão,
+> exames, contribuição sindical. São 33 contas e R$ 2,9 mi no período — os
+> totais do painel **não** são o custo inteiro do centro de custo. Para mudar o
+> recorte, edite as constantes no topo de `atualizar.py` (veja abaixo).
+
 - **Aba Visão geral** — orçado × realizado por mês, execução acumulada com projeção
   de fechamento, desvio por grupo e composição do gasto.
 - **Aba Contas** — maiores contas, concentração (Pareto), execução mês a mês por
@@ -112,6 +119,43 @@ registra qual recorte foi exportado e quando.
 
 ---
 
+## Mudar o recorte operacional
+
+No topo de `atualizar.py`:
+
+```python
+GRUPOS_EXCLUIDOS = {410}      # DESPESAS COM PESSOAL, inteiro
+CONTAS_EXCLUIDAS = {1360, 1370}   # contribuição sindical (encargo fora do grupo)
+CONTAS_MANTIDAS = set()       # contas do grupo excluído que você quer de volta
+```
+
+Excluir o **grupo** inteiro, e não uma lista de contas, é de propósito: se o ERP
+criar uma conta de benefício nova no mês que vem, ela já sai de fora sozinha em
+vez de entrar sem ninguém notar.
+
+Três contas do grupo de pessoal são discutíveis, porque na prática são custo de
+operação. Elas saíram junto e você pode trazer de volta pondo o código em
+`CONTAS_MANTIDAS`:
+
+| Cta | Conta | No período | Por que reconsiderar |
+|---|---|---|---|
+| 510 | Diárias | R$ 167.884 | Inclui os **carretos** pagos a terceiros, que são frete |
+| 1860 | Prestação de serviço continuado - PJ | R$ 64.400 | Terceirizado, não é folha |
+| 530 | EPIs/Uniformes | R$ 157 | Equipamento de segurança |
+| 1770 | EPC - Equipamento de proteção coletiva | R$ 1.216 | Equipamento de segurança |
+
+Exemplo, para trazer diárias e o serviço PJ de volta:
+
+```python
+CONTAS_MANTIDAS = {510, 1860}
+```
+
+Depois rode `python atualizar.py` de novo. Ele imprime quanto ficou de fora, e a
+aba **Alertas** mostra, mês a mês, quanto do arquivo original é operacional e
+quanto é pessoal.
+
+---
+
 ## Como os dados se ligam
 
 A chave é o código da conta: o que o orçamento chama de **`CONTA`** é o mesmo que
@@ -144,33 +188,39 @@ Alguns detalhes que valem saber ao ler os números:
 
 ---
 
-## O que o dashboard já mostra (jan–jul/2026)
+## O que o dashboard já mostra (jan–jul/2026, operacional)
 
-Com os sete meses carregados, o consumo está em **77,6% do orçado** — folga
-aparente. A composição, no entanto, está bem deslocada:
+Com os sete meses carregados e sem a folha, o consumo está em **70,5% do
+orçado** — R$ 7,88 mi realizados contra R$ 11,17 mi previstos. A folga é
+aparente: a composição está bem deslocada.
 
 | Grupo | Orçado | Realizado | Execução |
 |---|---|---|---|
-| Despesas tributárias | R$ 22.463 | R$ 1.495.548 | 6.657,8% |
+| Despesas tributárias | R$ 22.463 | R$ 1.476.495 | 6.573% |
 | Despesas de materiais | R$ 1.537.818 | R$ 2.883.932 | 187,5% |
-| Despesas com pessoal | R$ 2.724.554 | R$ 2.886.616 | 105,9% |
 | Despesas de serviços | R$ 3.873.548 | R$ 3.033.717 | 78,3% |
 | Custos diretos (não monetário) | R$ 2.269.185 | R$ 477.429 | 21,0% |
 | Custos diretos | R$ 3.481.767 | R$ 12.205 | 0,4% |
 
-Três pontos explicam quase tudo, e os três estão na aba **Alertas**:
+Quatro contas concentram quase tudo, e as três primeiras estão na aba
+**Alertas**:
 
-- **IPVA/Licenciamento (1440): R$ 1.433.078 gastos, R$ 0 orçados.** É o que leva
-  as tributárias a 6.657%.
+- **Peças, acessórios e pneus: R$ 2,87 mi realizados contra R$ 1,51 mi
+  orçados** — 190%, R$ 1,35 mi acima. É o maior gasto do centro de custo.
+- **IPVA/Licenciamento: R$ 1,45 mi gastos, R$ 0 orçados.** É o que leva as
+  tributárias a 6.573%.
 - **Óleo diesel (380): R$ 3,48 mi orçados no período, R$ 12 mil realizados.** O
-  diesel real está lançado em **Combustível (820)**. Ou seja, combustível está
-  orçado em duas contas (380 com R$ 6,01 mi no ano e 820 com R$ 3,40 mi) e
-  realizado em uma só. Vale alinhar a classificação do orçamento com a do ERP.
-- **Peças, acessórios e pneus (1200): 187,5% do orçado**, cerca de R$ 1,35 mi
-  acima.
+  diesel real está lançado em **Combustível (820)**, que tem R$ 1,42 mi
+  realizados contra R$ 1,97 mi orçados. Combustível está orçado em duas contas e
+  realizado em uma só — vale alinhar a classificação do orçamento com a do ERP.
+- **Manutenção de máquinas e veículos: R$ 1,07 mi** contra R$ 1,51 mi orçados.
+
+Junto com peças e pneus, manutenção e combustível somam **R$ 5,36 mi**, ou 68%
+do gasto operacional do período: o custo desta coordenação é essencialmente
+**rodar e manter frota**.
 
 A **projeção de fechamento** (realizado até julho + orçado de ago a dez) dá
-**R$ 20,7 mi** contra um orçamento anual de **R$ 23,8 mi**.
+**R$ 16,0 mi**.
 
 Sobre o **custo por litro**: com junho e julho tendo litros e financeiro ao mesmo
 tempo, o cálculo sai em R$ 1,23/L e R$ 1,81/L. Isso é bem abaixo do preço de

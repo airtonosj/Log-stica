@@ -293,6 +293,20 @@ function defHachura(svg, id) {
 let contadorId = 0;
 const novoId = prefixo => `${prefixo}-${++contadorId}`;
 
+const MARCA_MINIMA = 2;   // px
+
+/**
+ * Piso visível para a marca. Numa lista onde o maior valor é R$ 2,9 mi, uma
+ * conta de R$ 2.240 daria uma barra de 0,8px — que não se vê e parece falha de
+ * desenho. Desenhar 2px superestima em menos de 0,2% da escala, abaixo do que o
+ * gráfico consegue distinguir, e o número exato está no rótulo, na dica e na
+ * tabela. Valor zero continua sem marca nenhuma: ausência tem de parecer ausência.
+ */
+function extensaoVisivel(px, valor) {
+  if (!valor) return 0;
+  return Math.max(px, MARCA_MINIMA);
+}
+
 const ROTULO_SEM_DADOS = 'sem dados';
 
 /**
@@ -424,7 +438,7 @@ function colunasAgrupadas(alvo, cfg) {
     series.forEach((s, j) => {
       const v = s.valores[i] || 0;
       const x = x0 + j * (larguraBarra + VAO);
-      const h = Math.abs(y(v) - y(0));
+      const h = extensaoVisivel(Math.abs(y(v) - y(0)), v);
       const g = el('g', {}, camada);
       el('path', {
         d: caminhoBarra(x, y(Math.max(v, 0)), larguraBarra, h, 'cima'),
@@ -582,7 +596,7 @@ function colunas(alvo, cfg) {
       return;
     }
 
-    const h = Math.abs(y(v) - y(0));
+    const h = extensaoVisivel(Math.abs(y(v) - y(0)), v);
     el('path', {
       d: caminhoBarra(x, y(Math.max(v, 0)), largura, h, v < 0 ? 'baixo' : 'cima'),
       fill: corFinal, class: 'g-marca',
@@ -622,11 +636,15 @@ function barrasDivergentes(alvo, cfg) {
   const { itens, formatarValor = fmt.curta, formatarDica = fmt.moeda } = cfg;
   if (!itens.length) return vazio(alvo, 'Sem dados no período filtrado.');
 
-  const larguraRotulo = cfg.larguraRotulo || 150;
+  // Num cartão estreito uma coluna de nomes fixa em 150px não sobra quase nada
+  // para a barra, e o valor na ponta passa a colidir com as marcas do eixo.
+  const disponivel = Math.max(280, alvo.clientWidth || 560);
+  const larguraRotulo = Math.min(cfg.larguraRotulo || 150, Math.max(70, disponivel * 0.34));
+  const margemDireita = Math.min(74, Math.max(42, disponivel * 0.16));
   const alturaLinha = 30;
   const altura = itens.length * alturaLinha + 56;
   const q = moldura(alvo, altura, {
-    esquerda: larguraRotulo + 10, direita: 74, cima: 12, baixo: 32,
+    esquerda: larguraRotulo + 10, direita: margemDireita, cima: 12, baixo: 32,
   });
 
   const extremo = Math.max(1, ...itens.map(i => Math.abs(i.valor)));
@@ -635,11 +653,18 @@ function barrasDivergentes(alvo, cfg) {
   const zero = x(0);
 
   // grade vertical + eixo zero
-  marcas.forEach(v => {
+  // Desbasta os rótulos do eixo se não couberem lado a lado. O zero e a última
+  // marca são sempre escritos: são eles que dão a escala.
+  const larguraDaMarca = Math.max(...marcas.map(v => larguraTexto(formatarValor(v), 10.5)));
+  const passoMarca = Math.max(1, Math.ceil(
+    marcas.length / Math.max(1, Math.floor(q.l / (larguraDaMarca + 10)))));
+  marcas.forEach((v, i) => {
     el('line', {
       x1: x(v), y1: q.m.cima, x2: x(v), y2: q.m.cima + q.a,
       class: v === 0 ? 'g-eixo' : 'g-grade',
     }, q.svg);
+    const sempre = v === 0 || i === marcas.length - 1;
+    if (!sempre && i % passoMarca !== 0) return;
     texto(q.svg, x(v), q.m.cima + q.a + 16, formatarValor(v), 'g-tick',
           { 'text-anchor': 'middle' });
   });
@@ -651,7 +676,7 @@ function barrasDivergentes(alvo, cfg) {
   itens.forEach((item, i) => {
     const yc = q.m.cima + alturaLinha * i + alturaLinha / 2;
     const acima = item.valor > 0;
-    const largura = Math.abs(x(item.valor) - zero);
+    const largura = extensaoVisivel(Math.abs(x(item.valor) - zero), item.valor);
     const g = el('g', {}, q.svg);
 
     texto(g, q.m.esquerda - 10, yc + 3.5, encurtar(item.rotulo, larguraRotulo - 4),
@@ -697,23 +722,32 @@ function barrasHorizontais(alvo, cfg) {
   const { itens, series, formatarValor = fmt.curta, formatarDica = fmt.moeda } = cfg;
   if (!itens.length) return vazio(alvo, 'Sem dados no período filtrado.');
 
-  const larguraRotulo = cfg.larguraRotulo || 170;
+  const disponivel = Math.max(280, alvo.clientWidth || 560);
+  const larguraRotulo = Math.min(cfg.larguraRotulo || 170, Math.max(70, disponivel * 0.36));
+  const margemDireita = Math.min(76, Math.max(44, disponivel * 0.17));
   const nSeries = series.length;
   const alturaLinha = nSeries > 1 ? 34 : 26;
   const altura = itens.length * alturaLinha + 52;
   const q = moldura(alvo, altura, {
-    esquerda: larguraRotulo + 10, direita: 76, cima: 10, baixo: 30,
+    esquerda: larguraRotulo + 10, direita: margemDireita, cima: 10, baixo: 30,
   });
 
   const maximo = Math.max(1, ...itens.flatMap(it => series.map(s => s.valor(it) || 0)));
   const { min, max, marcas } = marcasRedondas(0, maximo, 4);
   const x = escalaLinear([min, max], [q.m.esquerda, q.m.esquerda + q.l]);
 
-  marcas.forEach(v => {
+  // Desbasta os rótulos do eixo se não couberem lado a lado. O zero e a última
+  // marca são sempre escritos: são eles que dão a escala.
+  const larguraDaMarca = Math.max(...marcas.map(v => larguraTexto(formatarValor(v), 10.5)));
+  const passoMarca = Math.max(1, Math.ceil(
+    marcas.length / Math.max(1, Math.floor(q.l / (larguraDaMarca + 10)))));
+  marcas.forEach((v, i) => {
     el('line', {
       x1: x(v), y1: q.m.cima, x2: x(v), y2: q.m.cima + q.a,
       class: v === 0 ? 'g-eixo' : 'g-grade',
     }, q.svg);
+    const sempre = v === 0 || i === marcas.length - 1;
+    if (!sempre && i % passoMarca !== 0) return;
     texto(q.svg, x(v), q.m.cima + q.a + 16, formatarValor(v), 'g-tick',
           { 'text-anchor': 'middle' });
   });
@@ -731,7 +765,7 @@ function barrasHorizontais(alvo, cfg) {
     const alturaBloco = espessura * nSeries + VAO * (nSeries - 1);
     series.forEach((s, j) => {
       const v = s.valor(item) || 0;
-      const largura = Math.abs(x(Math.max(v, 0)) - x(0));
+      const largura = extensaoVisivel(Math.abs(x(Math.max(v, 0)) - x(0)), v);
       const yb = yc - alturaBloco / 2 + j * (espessura + VAO);
       if (largura >= 0.5) {
         el('path', {
@@ -799,7 +833,7 @@ function pareto(alvo, cfg) {
 
   dados.forEach((d, i) => {
     const g = el('g', {}, q.svg);
-    const h = Math.abs(y(d.parte) - y(0));
+    const h = extensaoVisivel(Math.abs(y(d.parte) - y(0)), d.parte);
     el('path', {
       d: caminhoBarra(centro(i) - largura / 2, y(d.parte), largura, h, 'cima'),
       fill: corBarra, class: 'g-marca',
@@ -908,8 +942,11 @@ function rosca(alvo, cfg) {
       d: `M${x0},${y0}A${rExterno},${rExterno} 0 ${grande} 1 ${x1},${y1}`
        + `L${x2},${y2}A${rInterno},${rInterno} 0 ${grande} 0 ${x3},${y3}Z`,
       fill: cor.serie(i),
-      // vão de 2px na cor da superfície separando fatias vizinhas
-      stroke: superficie, 'stroke-width': VAO,
+      // Vão na cor da superfície separando fatias vizinhas. Numa fatia de 0,1%
+      // um traço de 2px cobriria o arco inteiro e ela desapareceria: o vão
+      // acompanha a espessura do arco.
+      stroke: superficie,
+      'stroke-width': Math.min(VAO, Math.max(0, varredura * rExterno / 2)),
       class: 'g-marca',
     }, g);
     ligarDica(g, {
@@ -939,8 +976,10 @@ function rosca(alvo, cfg) {
       }, svg);
       texto(svg, xLista + 16, y + 3.5,
             encurtar(fatia.rotulo, disponivel - 118, 11), 'g-rotulo');
+      // Sem casa decimal, uma fatia de 0,15% apareceria como "0%".
+      const pctFatia = (fatia.valor / total) * 100;
       texto(svg, largura - 6, y + 3.5,
-            `${fmt.pct((fatia.valor / total) * 100, 0)} · ${fmt.curta(fatia.valor)}`,
+            `${fmt.pct(pctFatia, pctFatia < 1 ? 1 : 0)} · ${fmt.curta(fatia.valor)}`,
             'g-valor', { 'text-anchor': 'end' });
     });
   } else {

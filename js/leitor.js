@@ -243,7 +243,9 @@ function acharPeriodo(linhas) {
 
 function partesLancamento(descricao) {
   const s = String(descricao || '');
-  const tipo = s.includes('"') ? s.split('"')[0].trim() : (s.split(/\s+/)[0] || '');
+  // O tipo vai até a primeira aspa, data ou 'Seq.:'. Cortar no primeiro espaço
+  // truncaria 'L. MANUAL' para 'L.'.
+  const tipo = (s.match(/^\s*(.+?)\s*(?="|\d{2}\/\d{2}\/\d{4}|Seq\.:|$)/) || [, ''])[1].trim();
   const doc = (s.match(/"([^"]*)"/) || [, ''])[1].trim();
   const fornecedor = (s.match(/Fornec:\s*(.+?)\s*$/) || [, ''])[1].trim();
   const historico = (s.match(/Descrição:\s*(.+?)\s*$/) || [, ''])[1].trim();

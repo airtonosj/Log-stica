@@ -226,7 +226,7 @@ function construirVisao() {
     .map(([rotulo, valor]) => ({ rotulo, valor }))
     .sort((a, b) => b.valor - a.valor);
 
-  // ---- por dia
+  // ---- por dia (ou por semana, quando o recorte é longo)
   const mapaDia = new Map();
   lancamentos.forEach(l => {
     mapaDia.set(l.data, (mapaDia.get(l.data) || 0) + l.valor);
@@ -234,6 +234,28 @@ function construirVisao() {
   const porDia = [...mapaDia.entries()]
     .map(([data, valor]) => ({ data, valor }))
     .sort((a, b) => a.data.localeCompare(b.data));
+
+  // Sete meses dão ~190 dias distintos: em qualquer largura de cartão isso vira
+  // um borrão de barras de 2px. Acima de 45 categorias agrupamos por semana.
+  const AGRUPAR_ACIMA_DE = 45;
+  const agruparPorSemana = porDia.length > AGRUPAR_ACIMA_DE;
+  const mapaSemana = new Map();
+  if (agruparPorSemana) {
+    porDia.forEach(d => {
+      const dt = new Date(d.data + 'T00:00:00');
+      // recua até a segunda-feira
+      const diaDaSemana = (dt.getDay() + 6) % 7;
+      dt.setDate(dt.getDate() - diaDaSemana);
+      const chave = dt.toISOString().slice(0, 10);
+      const atual = mapaSemana.get(chave) || { inicio: chave, valor: 0, dias: 0 };
+      atual.valor += d.valor;
+      atual.dias += 1;
+      mapaSemana.set(chave, atual);
+    });
+  }
+  const porPeriodo = agruparPorSemana
+    ? [...mapaSemana.values()].sort((a, b) => a.inicio.localeCompare(b.inicio))
+    : porDia.map(d => ({ inicio: d.data, valor: d.valor, dias: 1 }));
 
   // ---- diesel
   const diesel = (d.diesel || []).filter(r =>
@@ -254,7 +276,7 @@ function construirVisao() {
     grupos, nomeGrupo, porCta,
     mesesComDados, mesesFiltro,
     linhasConta, linhasGrupo, total, serieMensal,
-    lancamentos, fornecedores, tipos, porDia, totalLancado,
+    lancamentos, fornecedores, tipos, porDia, porPeriodo, agruparPorSemana, totalLancado,
     diesel, litrosPorMes, combustivelPorMes, mesesComDiesel: Object.keys(litrosPorMes).map(Number).sort((a, b) => a - b),
     arquivosDiesel: d.arquivosDiesel || [],
     meses: d.meses,
@@ -767,18 +789,30 @@ function renderLancamentos(v) {
     v.tipos.map(t => [t.rotulo, fmt.moeda(t.valor),
                       fmt.pct(v.totalLancado ? (t.valor / v.totalLancado) * 100 : 0)]));
 
+  porId('titulo-por-dia').textContent = v.agruparPorSemana
+    ? 'Valor lançado por semana' : 'Valor lançado por dia';
+  porId('legenda-por-dia').textContent = v.agruparPorSemana
+    ? `O recorte tem ${fmt.n0(v.porDia.length)} dias com lançamento, agrupados por `
+      + 'semana para o gráfico ficar legível. A tabela abaixo traz dia por dia.'
+    : 'Concentração ao longo do período — normalmente revela as datas de fechamento.';
+
   G.registrar(porId('g-por-dia'), () => {
     G.colunas(porId('g-por-dia'), {
-      categorias: v.porDia.map(d => {
-        const [, m, dd] = d.data.split('-');
-        return v.mesesFiltro.length > 1 ? `${dd}/${m}` : dd;
+      categorias: v.porPeriodo.map(d => {
+        const [, m, dd] = d.inicio.split('-');
+        return `${dd}/${m}`;
       }),
-      valores: v.porDia.map(d => d.valor),
+      valores: v.porPeriodo.map(d => d.valor),
       cor: G.cor.serie(1),
       nomeSerie: 'Valor lançado',
       formatarValor: fmt.curta,
       formatarDica: fmt.moeda,
-      tituloDica: i => fmt.data(v.porDia[i].data),
+      tituloDica: i => v.agruparPorSemana
+        ? 'Semana de ' + fmt.data(v.porPeriodo[i].inicio)
+        : fmt.data(v.porPeriodo[i].inicio),
+      notasDica: i => v.agruparPorSemana
+        ? [`${v.porPeriodo[i].dias} ${v.porPeriodo[i].dias === 1 ? 'dia' : 'dias'} com lançamento`]
+        : null,
     });
   });
   tabelaSimples(porId('t-g-por-dia'), ['Data', 'Valor lançado'],
@@ -1030,12 +1064,23 @@ function renderDiesel(v) {
       return G.vazio(porId('g-preco-litro'),
         'Nenhum mês tem litros e realizado financeiro ao mesmo tempo.');
     }
-    G.linhas(porId('g-preco-litro'), {
+    // Colunas, e não linha: com dois ou três meses uma linha liga pontos que não
+    // formam tendência nenhuma e sugere continuidade onde não há.
+    G.colunas(porId('g-preco-litro'), {
       categorias: meses12.map(fmt.mes),
-      series: [{ nome: 'R$ por litro', cor: G.cor.serie(1), valores: precos }],
+      valores: precos,
+      cor: G.cor.serie(1),
+      nomeSerie: 'R$ por litro',
+      rotularTodas: true,
       formatarValor: v2 => 'R$ ' + fmt.n2(v2),
       formatarDica: v2 => 'R$ ' + fmt.n2(v2) + ' /L',
       tituloDica: i => fmt.mesLongo(meses12[i]),
+      notasDica: i => {
+        const l = v.litrosPorMes[meses12[i]];
+        const c = v.combustivelPorMes[meses12[i]];
+        if (!l || c === undefined) return null;
+        return [`${fmt.moeda(c)} ÷ ${fmt.litros(l)}`];
+      },
     });
   });
   tabelaSimples(porId('t-g-preco-litro'), ['Mês', 'Litros', 'Combustível', 'R$ por litro'],
@@ -1470,8 +1515,11 @@ function trocarAba(id) {
   document.querySelectorAll('main > section').forEach(s => {
     s.hidden = s.id !== 'painel-' + id;
   });
-  // painel escondido tem largura zero; ao aparecer precisa redesenhar
+  // O painel escondido tem largura zero. Redesenha agora e outra vez no quadro
+  // seguinte: no primeiro o layout do painel que acabou de aparecer pode ainda
+  // não estar resolvido, e o gráfico sairia na largura de reserva.
   G.redesenhar();
+  requestAnimationFrame(() => G.redesenhar());
 }
 
 /* ----------------------------------------------------------- render */

@@ -104,7 +104,8 @@ def _centro_de_custo(aba, col):
     return None, ''
 
 
-_TIPO_DOC = re.compile(r'^\s*([^"]+?)\s*"')
+_TIPO_DOC = re.compile(
+    r'^\s*(.+?)\s*(?="|\d{2}/\d{2}/\d{4}|Seq\.:|$)')
 _DOCUMENTO = re.compile(r'"([^"]*)"')
 _FORNECEDOR = re.compile(r'Fornec:\s*(.+?)\s*$')
 _HISTORICO = re.compile(r'Descrição:\s*(.+?)\s*$')
@@ -112,7 +113,11 @@ _SEQUENCIA = re.compile(r'Seq\.:\s*(\d+)')
 
 
 def _partes_do_lancamento(descricao):
-    """'C. PAGAR "4977" 01 Seq.: 1 Fornec: Tama' -> tipo, doc, fornecedor, ..."""
+    """'C. PAGAR "4977" 01 Seq.: 1 Fornec: Tama' -> tipo, doc, fornecedor, ...
+
+    O tipo vai até a primeira aspa, data ou 'Seq.:'. Cortar no primeiro espaço
+    truncaria 'L. MANUAL' para 'L.'.
+    """
     tipo = _TIPO_DOC.match(descricao)
     documento = _DOCUMENTO.search(descricao)
     fornecedor = _FORNECEDOR.search(descricao)
