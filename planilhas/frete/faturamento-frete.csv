@@ -1,0 +1,62 @@
+# FRETE (não carrada) faturado às obras, por mês.
+#
+# Serviço DIFERENTE do frete carrada, para obras diferentes — os dois somados
+# são o faturamento de frete da logística. O frete carrada vem das planilhas de
+# frete; este arquivo é o outro serviço.
+#
+# Formato: mes;valor;observacao   (mes 1 a 12; valor com vírgula ou ponto)
+# Mês ausente fica ausente: o painel mostra em branco em vez de supor zero.
+#
+# ---------------------------------------------------------------------------
+# ESTE ARQUIVO JÁ NÃO É FONTE DE RECEITA
+#
+# Enquanto o ERP não publicava receita de maio a julho, `frete carrada + frete`
+# preenchia a lacuna. O relatório `05 a 07` trouxe a receita dos três meses, e
+# agora **a receita de jan a jul vem inteira do ERP**, conferida ao centavo
+# contra o rodapé impresso. Este arquivo passou a servir para duas coisas:
+#
+#   1. saber a COMPOSIÇÃO da receita (quanto é carrada, quanto é o outro serviço)
+#   2. CONFERIR: onde a soma não fecha com o ERP, há frete rodado e não faturado
+#
+# O painel continua com a regra: ERP onde houver, soma onde faltar.
+# ---------------------------------------------------------------------------
+mes;valor;observacao
+1;1013072,36;identificado pela receita de janeiro — ver a conferência abaixo
+2;719052,09;conferido: fecha a receita do ERP de fevereiro (1 centavo de arredondamento)
+3;1066086,43;conferido: fecha a receita do ERP de março (2 centavos de arredondamento)
+# ---------------------------------------------------------------------------
+# CONFERÊNCIA, com a receita do ERP de todos os meses
+#
+#   mês   carrada        frete          soma           receita ERP    sobra
+#   jan   1.308.362,10   1.013.072,36   2.321.434,46   2.098.013,08   +223.421,38
+#   fev     939.543,50     719.052,09   1.658.595,59   1.658.595,60         -0,01
+#   mar   1.560.327,29   1.066.086,43   2.626.413,72   2.626.413,74         -0,02
+#
+# JANEIRO deixou de fechar quando o frete carrada passou a vir do DETALHE da
+# planilha (1.308.362,10) em vez do resumo (1.084.940,71), por decisão de quem
+# mantém a planilha. Com o resumo a conta fechava em 1 centavo. Ou seja: se o
+# detalhe está certo, R$ 223.421,39 de frete rodou em janeiro e não entrou na
+# receita do mês. É a leitura que vale enquanto o detalhe for o correto.
+#
+# ---------------------------------------------------------------------------
+# O QUE FALTA, e quanto cada mês pede
+#
+# Agora que a receita do ERP é conhecida, o frete que falta em cada mês é uma
+# subtração — não um chute. Estes são os valores que FECHARIAM cada mês:
+#
+#   abril   2.357.981,15 - 1.378.218,13 =   979.763,02
+#   junho   2.385.093,92 - 1.604.128,61 =   780.965,31
+#   julho   2.047.536,40 - 1.338.285,95 =   709.250,45
+#   maio    2.386.015,65 - (sem carrada) = não dá para separar
+#
+# Os três valores enviados que ainda não têm mês são
+#   R$ 994.097,85 · R$ 659.741,89 · R$ 775.475,91
+# e NENHUM fecha nenhum dos meses acima: o mais próximo é 775.475,91 contra os
+# 780.965,31 de junho, e erra por R$ 5.489,40. Em janeiro, fevereiro e março o
+# encaixe tinha sido de 1 a 2 centavos, então essa diferença não é
+# arredondamento — falta dado, ou os três valores são de outros meses.
+#
+# NÃO PREENCHI esses meses por subtração de propósito: seria transformar a
+# conferência em dado, e aí ela deixaria de conferir qualquer coisa.
+#
+# Ao acrescentar um mês aqui, rode `python atualizar.py`.

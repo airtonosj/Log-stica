@@ -293,6 +293,23 @@ function defHachura(svg, id) {
 let contadorId = 0;
 const novoId = prefixo => `${prefixo}-${++contadorId}`;
 
+/**
+ * Hachura 45° na cor da própria série. Marca DADO PARCIAL: a barra existe e tem
+ * a cor certa, mas a textura avisa que o valor não é comparável com os meses
+ * cheios. Textura aqui é canal de qualidade do dado, não enfeite.
+ */
+function defHachuraDaSerie(svg, id, corDaSerie) {
+  let defs = svg.querySelector('defs');
+  if (!defs) defs = el('defs', {}, svg);
+  const p = el('pattern', {
+    id, width: 5, height: 5, patternUnits: 'userSpaceOnUse',
+    patternTransform: 'rotate(45)',
+  }, defs);
+  el('rect', { width: 5, height: 5, fill: cor.superficie() }, p);
+  el('line', { x1: 0, y1: 0, x2: 0, y2: 5, stroke: corDaSerie, 'stroke-width': 2.6 }, p);
+  return `url(#${id})`;
+}
+
 const MARCA_MINIMA = 2;   // px
 
 /**
@@ -315,8 +332,13 @@ const ROTULO_SEM_DADOS = 'sem dados';
  * a hachura, a legenda e a dica já dizem o mesmo, sem sujar o gráfico.
  */
 function rotularSemDados(pai, x, y, larguraDisponivel) {
-  if (larguraTexto(ROTULO_SEM_DADOS, 10.5) + 4 > larguraDisponivel) return;
-  texto(pai, x, y, ROTULO_SEM_DADOS, 'g-tick', { 'text-anchor': 'middle' });
+  rotularAbaixo(pai, x, y, ROTULO_SEM_DADOS, larguraDisponivel);
+}
+
+/** Escreve um rótulo sob a coluna, mas só se couber com folga. */
+function rotularAbaixo(pai, x, y, conteudo, larguraDisponivel) {
+  if (larguraTexto(conteudo, 10.5) + 4 > larguraDisponivel) return;
+  texto(pai, x, y, conteudo, 'g-tick', { 'text-anchor': 'middle' });
 }
 
 /* ----------------------------------------------------------- grade e eixos */
@@ -393,8 +415,8 @@ function vazio(alvo, mensagem) {
    Duas séries, eixo único em R$. Mês sem planilha vem hachurado e rotulado.
    ========================================================================== */
 function colunasAgrupadas(alvo, cfg) {
-  const { categorias, series, semDados = [], formatarValor = fmt.curta,
-          formatarDica = fmt.moeda, altura = 300 } = cfg;
+  const { categorias, series, semDados = [], parcial = [],
+          formatarValor = fmt.curta, formatarDica = fmt.moeda, altura = 300 } = cfg;
   if (!categorias.length) return vazio(alvo, 'Sem dados no período filtrado.');
 
   const q = moldura(alvo, altura, { esquerda: 58, baixo: 44, cima: 14 });
@@ -411,6 +433,11 @@ function colunasAgrupadas(alvo, cfg) {
   const larguraGrupo = Math.min(faixa * 0.72, BARRA_MAX * nSeries + VAO * (nSeries - 1));
   const larguraBarra = Math.max(3, (larguraGrupo - VAO * (nSeries - 1)) / nSeries);
   const base = q.m.cima + q.a;
+
+  // um padrão por série, criado só se houver mês parcial
+  const hachuraDaSerie = parcial.some(Boolean)
+    ? series.map((s, j) => defHachuraDaSerie(q.svg, novoId(`parcial-${j}`), s.cor))
+    : [];
 
   const camada = el('g', {}, q.svg);
   categorias.forEach((rotulo, i) => {
@@ -435,6 +462,9 @@ function colunasAgrupadas(alvo, cfg) {
       return;
     }
 
+    if (parcial[i]) {
+      rotularAbaixo(camada, centro(i), base + 30, 'parcial', faixa);
+    }
     series.forEach((s, j) => {
       const v = s.valores[i] || 0;
       const x = x0 + j * (larguraBarra + VAO);
@@ -442,7 +472,10 @@ function colunasAgrupadas(alvo, cfg) {
       const g = el('g', {}, camada);
       el('path', {
         d: caminhoBarra(x, y(Math.max(v, 0)), larguraBarra, h, 'cima'),
-        fill: s.cor, class: 'g-marca',
+        fill: parcial[i] && hachuraDaSerie.length ? hachuraDaSerie[j] : s.cor,
+        stroke: parcial[i] ? s.cor : null,
+        'stroke-width': parcial[i] ? 1 : null,
+        class: 'g-marca',
       }, g);
       // área de acerto maior que a marca pintada
       el('rect', {
@@ -462,7 +495,10 @@ function colunasAgrupadas(alvo, cfg) {
   eixoXCategorias(q, categorias, centro);
 
   const itens = series.map(s => ({ cor: s.cor, rotulo: s.nome }));
-  if (semDados.some(Boolean)) itens.push({ forma: 'hachura', rotulo: 'Sem planilha carregada' });
+  if (semDados.some(Boolean)) itens.push({ forma: 'hachura', rotulo: 'Sem relatório' });
+  if (parcial.some(Boolean)) {
+    itens.push({ forma: 'hachura', rotulo: cfg.rotuloParcial || 'Dado parcial' });
+  }
   legenda(alvo, itens);
 }
 
@@ -556,7 +592,7 @@ function linhas(alvo, cfg) {
    ========================================================================== */
 function colunas(alvo, cfg) {
   const { categorias, valores, cor: corBarra, meta = null, semDados = [],
-          formatarValor = fmt.n0, formatarDica = v => fmt.pct(v),
+          parcial = [], formatarValor = fmt.n0, formatarDica = v => fmt.pct(v),
           rotularTodas = false, altura = 260 } = cfg;
   if (!categorias.length) return vazio(alvo, 'Sem dados no período filtrado.');
 
@@ -574,6 +610,10 @@ function colunas(alvo, cfg) {
   const largura = Math.min(faixa - VAO * 2, BARRA_MAX);
   const base = q.m.cima + q.a;
   const corFinal = corBarra || cor.serie(0);
+  // dado parcial ganha textura na própria cor: a barra continua legível e a
+  // trama avisa que o valor não é comparável com os outros meses
+  const hachuraParcial = parcial.some(Boolean)
+    ? defHachuraDaSerie(q.svg, novoId('parcial-col'), corFinal) : null;
 
   // maior valor recebe rótulo direto; os demais ficam no eixo e na dica
   const iMaior = valores.reduce((melhor, v, i) =>
@@ -599,8 +639,12 @@ function colunas(alvo, cfg) {
     const h = extensaoVisivel(Math.abs(y(v) - y(0)), v);
     el('path', {
       d: caminhoBarra(x, y(Math.max(v, 0)), largura, h, v < 0 ? 'baixo' : 'cima'),
-      fill: corFinal, class: 'g-marca',
+      fill: parcial[i] && hachuraParcial ? hachuraParcial : corFinal,
+      stroke: parcial[i] ? corFinal : null,
+      'stroke-width': parcial[i] ? 1 : null,
+      class: 'g-marca',
     }, g);
+    if (parcial[i]) rotularAbaixo(g, centro(i), base + 30, 'conferir', faixa);
     el('rect', {
       x: x - VAO, y: q.m.cima, width: largura + VAO * 2, height: q.a, fill: 'transparent',
     }, g);
@@ -623,9 +667,15 @@ function colunas(alvo, cfg) {
   }
 
   eixoXCategorias(q, categorias, centro);
+  const itensLegenda = [];
   if (semDados.some(Boolean) || valores.some(v => v === null || v === undefined)) {
-    legenda(alvo, [{ forma: 'hachura', rotulo: 'Sem planilha carregada' }]);
+    itensLegenda.push({ forma: 'hachura', rotulo: 'Sem relatório' });
   }
+  if (parcial.some(Boolean)) {
+    itensLegenda.push({ cor: corFinal, forma: 'hachura',
+                        rotulo: cfg.rotuloParcial || 'A conferir' });
+  }
+  if (itensLegenda.length) legenda(alvo, itensLegenda);
 }
 
 /* ==========================================================================

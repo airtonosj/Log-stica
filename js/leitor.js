@@ -428,21 +428,26 @@ function limpar() {
 }
 
 /**
- * Junta base publicada + planilhas enviadas.
- * Mês enviado SUBSTITUI o mês publicado — retificação do ERP é comum e o
- * arquivo mais novo é o que vale.
+ * Junta a base publicada com as planilhas de razão enviadas pelo navegador.
+ *
+ * O que vem daqui alimenta SÓ a aba Fornecedores. O custo, o orçado e a receita
+ * do painel vêm do PDF de Análise de Custos, que é lido por `atualizar.py` —
+ * um .xlsx de razão não altera nenhum KPI, porque cobre apenas a parte lançada
+ * em contas a pagar.
+ *
+ * Mês enviado substitui o mês publicado: retificação do ERP é comum e o arquivo
+ * mais novo é o que vale.
  */
 function mesclar(base) {
   const armazem = carregarArmazem();
   const chaves = Object.keys(armazem);
   if (!chaves.length) return base;
 
-  const contas = base.contas.slice();
-  const porCta = new Map(contas.map(c => [c.cta, c]));
-  const meses = base.meses.slice();
-  let lancamentos = base.lancamentos.slice();
-  let diesel = (base.diesel || []).slice();
-  const arquivosDiesel = (base.arquivosDiesel || []).slice();
+  const razaoBase = base.razao || { meses: [], lancamentos: [], diesel: [], arquivosDiesel: [] };
+  const meses = (razaoBase.meses || []).slice();
+  let lancamentos = (razaoBase.lancamentos || []).slice();
+  let diesel = (razaoBase.diesel || []).slice();
+  const arquivosDiesel = (razaoBase.arquivosDiesel || []).slice();
 
   chaves.sort().forEach(chave => {
     const item = armazem[chave];
@@ -454,27 +459,10 @@ function mesclar(base) {
         lancamentos = lancamentos.filter(l => l.mes !== item.mes);
         meses.splice(i, 1);
       }
-      const realizado = {};
-      item.contas.forEach(c => {
-        realizado[String(c.cta)] = arredondar((realizado[String(c.cta)] || 0) + c.realizado);
-        // conta nova (não estava no orçamento publicado) entra sem grupo
-        if (!porCta.has(c.cta)) {
-          const nova = {
-            cta: c.cta, nome: c.nome, grupo: null,
-            ordem: 20000 + c.cta, naoMonetaria: false,
-            orcado: new Array(12).fill(0), foraDoOrcamento: true,
-          };
-          porCta.set(c.cta, nova);
-          contas.push(nova);
-        }
-      });
       meses.push({
-        mes: item.mes, ano: item.ano, inicio: item.inicio, fim: item.fim,
-        arquivo: item.arquivo, layout: item.layout, origem: 'enviado',
-        totalRealizado: item.totalRealizado, orcadoRelatorio: item.orcadoRelatorio,
+        mes: item.mes, ano: item.ano, arquivo: item.arquivo, layout: item.layout,
+        origem: 'enviado', totalRealizado: item.totalRealizado,
         conciliado: item.conciliado,
-        somaContas: item.somaContas, somaLancamentos: item.somaLancamentos,
-        realizado,
       });
       item.lancamentos.forEach(l => {
         lancamentos.push({
@@ -493,10 +481,10 @@ function mesclar(base) {
     }
   });
 
-  contas.sort((a, b) => a.ordem - b.ordem);
   meses.sort((a, b) => a.mes - b.mes);
-
-  return Object.assign({}, base, { contas, meses, lancamentos, diesel, arquivosDiesel });
+  return Object.assign({}, base, {
+    razao: { meses, lancamentos, diesel, arquivosDiesel },
+  });
 }
 
 /* ==========================================================================
@@ -513,6 +501,12 @@ function retorno(nivel, mensagem) {
 
 async function processar(arquivo, base) {
   const nome = arquivo.name;
+  if (/\.pdf$/i.test(nome)) {
+    retorno('falha', `${nome}: PDF não é lido no navegador. Coloque em `
+      + 'planilhas/analise/ e rode python atualizar.py — é de lá que vêm o custo, '
+      + 'o orçado e a receita do painel.');
+    return null;
+  }
   if (!/\.xlsx$/i.test(nome)) {
     if (/\.xls$/i.test(nome)) {
       retorno('falha', `${nome}: .xls antigo não é lido no navegador. `
@@ -554,10 +548,12 @@ async function processar(arquivo, base) {
         + `total ${G.fmt.moeda(r.totalRealizado)}, soma das contas ${G.fmt.moeda(r.somaContas)}, `
         + `soma dos lançamentos ${G.fmt.moeda(r.somaLancamentos)}. Confira o arquivo.`);
     } else {
-      const jaExistia = base && base.meses.some(m => m.mes === r.mes);
+      const razao = (base && base.razao) || { meses: [] };
+      const jaExistia = (razao.meses || []).some(m => m.mes === r.mes);
       retorno('ok', `${nome}: ${G.fmt.mesLongo(r.mes)} de ${r.ano}, layout ${r.layout}, `
-        + `${r.contas.length} contas, ${r.lancamentos.length} lançamentos, `
-        + `total ${G.fmt.moeda(r.totalRealizado)}. Conciliação confere.`
+        + `${r.lancamentos.length} lançamentos, ${G.fmt.moeda(r.totalRealizado)}. `
+        + 'Entrou na aba Fornecedores. Os KPIs de custo e receita vêm do PDF de '
+        + 'Análise de Custos e não mudam com este arquivo.'
         + (jaExistia ? ' Substituiu o mês que já estava carregado.' : ''));
     }
     return { chave: 'inversao:' + r.mes, item: r };

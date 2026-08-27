@@ -350,23 +350,27 @@ return { gerar, ESTILO };
 
 
 /* ==========================================================================
-   Relatorio — monta as abas do relatório a partir da visão filtrada.
-   Respeita os filtros ativos: o Excel é a tela, em planilha.
+   Relatorio — monta as abas do Excel a partir da visão filtrada.
+
+   Respeita os filtros ativos: o arquivo é a tela, em planilha. A aba `Resumo`
+   registra qual recorte foi exportado, para ninguém confundir depois um export
+   sem folha com o custo cheio.
    ========================================================================== */
 const Relatorio = (() => {
 
 const E = Xlsx.ESTILO;
 const fmt = G.fmt;
 
-function cabecalhoDoRecorte(estado, v) {
+function cabecalho(estado, v) {
   const f = estado.filtros;
   const base = estado.base;
   const linhas = [
-    `${base.centroCusto.nome} (centro de custo ${base.centroCusto.codigo}) — exercício ${base.ano}`,
+    `${base.centroCusto.nome} (centro de custo ${base.centroCusto.codigo}) — `
+    + `exercício ${base.ano}`,
   ];
   const partes = [];
   partes.push(f.periodo === 'ytd'
-    ? 'Período: acumulado dos meses com dados (' + v.mesesFiltro.map(fmt.mes).join(', ') + ')'
+    ? 'Período: acumulado (' + v.mesesFiltro.map(fmt.mes).join(', ') + ')'
     : 'Período: ' + fmt.mesLongo(Number(f.periodo)));
   if (f.grupo) partes.push('Grupo: ' + (v.nomeGrupo[f.grupo] || f.grupo));
   if (f.conta) {
@@ -374,63 +378,83 @@ function cabecalhoDoRecorte(estado, v) {
     partes.push('Conta: ' + (c ? `${c.cta} · ${c.nome}` : f.conta));
   }
   if (f.busca) partes.push('Busca: ' + f.busca);
-  partes.push('Contas não monetárias: ' + (f.naoMonetario ? 'incluídas' : 'excluídas'));
+  partes.push('Pessoal/folha: ' + (f.pessoal ? 'incluído' : 'ESCONDIDO'));
   linhas.push(partes.join('  ·  '));
+  linhas.push('Custo e receita vêm do PDF de Análise de Custos (FFOR501); '
+    + 'o orçado vem da planilha de orçamento.');
   return linhas;
 }
 
 function abaResumo(v, estado) {
+  const r = v.resultado;
   const ausentes = [];
   for (let m = 1; m <= 12; m++) if (!v.mesesComDados.includes(m)) ausentes.push(m);
 
   const linhas = [
+    ['RESULTADO (sempre com o custo cheio, inclusive folha)', ''],
+    ['Receita realizada', r.receitaRealizada],
+    ['Custo realizado', r.custoRealizado],
+    ['Resultado realizado', r.valor],
+    ['Margem sobre a receita (%)', { v: r.margem, estilo: E.pct }],
+    ['Resultado orçado para os mesmos meses', r.orcado],
+    ['Meses no cálculo', r.meses.map(fmt.mesLongo).join(', ') || 'nenhum'],
+    ['Meses sem receita lançada (fora do cálculo)',
+     r.mesesSemReceita.map(fmt.mesLongo).join(', ') || 'nenhum'],
+    ['Meses no vermelho', r.mesesNegativos.map(fmt.mesLongo).join(', ') || 'nenhum'],
+    ['', ''],
+    ['CUSTO NO RECORTE DESTE ARQUIVO', ''],
     ['Orçado no período', v.total.orcado],
     ['Realizado no período', v.total.realizado],
-    ['Desvio (realizado − orçado)', v.total.desvio],
+    ['Desvio', v.total.desvio],
     ['Execução do orçado (%)', { v: v.total.execucao, estilo: E.pct }],
-    ['Orçamento do ano inteiro', v.total.orcadoAno],
+    ['Orçamento do ano', v.total.orcadoAno],
     ['Projeção de fechamento', v.total.projecao],
-    ['Desvio projetado', v.total.projecao - v.total.orcadoAno],
     ['Contas no recorte', { v: v.linhasConta.length, estilo: E.inteiro }],
-    ['Lançamentos', { v: v.lancamentos.length, estilo: E.inteiro }],
-    ['Fornecedores', { v: v.fornecedores.length, estilo: E.inteiro }],
-    ['Meses com dados', v.mesesComDados.map(fmt.mesLongo).join(', ')],
-    ['Meses sem planilha', ausentes.length ? ausentes.map(fmt.mesLongo).join(', ') : 'nenhum'],
-    ['Litros de diesel no período', { v: v.diesel.reduce((s, r) => s + r.litros, 0), estilo: E.inteiro }],
+    ['Pessoal/folha no período', v.pessoalNoFiltro],
+    ['', ''],
+    ['Meses com Análise de Custos', v.mesesComDados.map(fmt.mesLongo).join(', ')],
+    ['Meses sem Análise de Custos', ausentes.map(fmt.mesLongo).join(', ') || 'nenhum'],
     ['Dados gerados em', estado.dados.geradoEm || '—'],
     ['Planilha de orçamento', estado.base.arquivoOrcamento || '—'],
-    ['Relatório exportado em', new Date().toLocaleString('pt-BR')],
+    ['Exportado em', new Date().toLocaleString('pt-BR')],
   ];
 
   return {
     nome: 'Resumo',
-    titulo: cabecalhoDoRecorte(estado, v),
-    colunas: [
-      { rotulo: 'Indicador', largura: 34 },
-      { rotulo: 'Valor', largura: 26, estilo: E.moeda },
-    ],
+    titulo: cabecalho(estado, v),
+    colunas: [{ rotulo: 'Indicador', largura: 44 },
+              { rotulo: 'Valor', largura: 26, estilo: E.moeda }],
     linhas,
   };
 }
 
-function abaPorGrupo(v) {
+function abaResultado(v) {
+  const r = v.resultado;
   return {
-    nome: 'Por grupo',
+    nome: 'Resultado mês a mês',
+    titulo: ['Receita, custo e resultado — custo cheio, inclusive folha',
+             'Mês sem receita lançada não entra no resultado: contar receita zero '
+             + 'produziria um prejuízo que não existe.'],
     colunas: [
-      { rotulo: 'Grupo', largura: 46 },
-      { rotulo: 'Contas', largura: 9, estilo: E.inteiro },
-      { rotulo: 'Orçado', largura: 16, estilo: E.moeda },
-      { rotulo: 'Realizado', largura: 16, estilo: E.moeda },
-      { rotulo: 'Desvio', largura: 16, estilo: E.moeda },
-      { rotulo: 'Execução %', largura: 12, estilo: E.pct },
-      { rotulo: 'Orçado no ano', largura: 16, estilo: E.moeda },
-      { rotulo: 'Projeção', largura: 16, estilo: E.moeda },
+      { rotulo: 'Mês', largura: 14 },
+      { rotulo: 'Receita orçada', largura: 17, estilo: E.moeda },
+      { rotulo: 'Receita realizada', largura: 17, estilo: E.moeda },
+      { rotulo: 'Custo orçado', largura: 17, estilo: E.moeda },
+      { rotulo: 'Custo realizado', largura: 17, estilo: E.moeda },
+      { rotulo: 'Resultado orçado', largura: 17, estilo: E.moeda },
+      { rotulo: 'Resultado realizado', largura: 18, estilo: E.moeda },
+      { rotulo: 'Margem %', largura: 11, estilo: E.pct },
     ],
-    linhas: v.linhasGrupo.slice().sort((a, b) => b.realizado - a.realizado).map(g => [
-      g.nome, g.contas, g.orcado, g.realizado, g.desvio, g.execucao, g.orcadoAno, g.projecao,
+    linhas: v.serie.filter(s => s.temDados).map(s => [
+      fmt.mesLongo(s.mes), s.receitaOrcada,
+      s.semReceita ? 'não lançada' : s.receitaRealizada,
+      s.custoOrcadoCheio, s.custoCheio,
+      s.resultadoOrcado,
+      s.resultado === null ? 'sem receita' : s.resultado,
+      s.margem === null ? '—' : s.margem,
     ]),
-    rodape: ['Total', v.linhasConta.length, v.total.orcado, v.total.realizado,
-             v.total.desvio, v.total.execucao, v.total.orcadoAno, v.total.projecao],
+    rodape: ['Total', r.receitaOrcada, r.receitaRealizada, r.custoOrcado,
+             r.custoRealizado, r.orcado, r.valor, r.margem],
   };
 }
 
@@ -441,17 +465,17 @@ function abaPorConta(v) {
       { rotulo: 'Cta', largura: 8, estilo: E.inteiro },
       { rotulo: 'Conta', largura: 40 },
       { rotulo: 'Grupo', largura: 40 },
-      { rotulo: 'Não monetária', largura: 13 },
-      { rotulo: 'Orçado', largura: 15, estilo: E.moeda },
-      { rotulo: 'Realizado', largura: 15, estilo: E.moeda },
-      { rotulo: 'Desvio', largura: 15, estilo: E.moeda },
+      { rotulo: 'Pessoal', largura: 9 },
+      { rotulo: 'Orçado', largura: 16, estilo: E.moeda },
+      { rotulo: 'Realizado', largura: 16, estilo: E.moeda },
+      { rotulo: 'Desvio', largura: 16, estilo: E.moeda },
       { rotulo: 'Execução %', largura: 12, estilo: E.pct },
-      { rotulo: 'Orçado no ano', largura: 15, estilo: E.moeda },
-      { rotulo: 'Realizado no ano', largura: 16, estilo: E.moeda },
-      { rotulo: 'Projeção', largura: 15, estilo: E.moeda },
+      { rotulo: 'Orçado no ano', largura: 16, estilo: E.moeda },
+      { rotulo: 'Realizado no ano', largura: 17, estilo: E.moeda },
+      { rotulo: 'Projeção', largura: 16, estilo: E.moeda },
     ],
     linhas: v.linhasConta.slice().sort((a, b) => b.realizado - a.realizado).map(l => [
-      l.cta, l.nome, l.nomeGrupo, l.naoMonetaria ? 'sim' : 'não',
+      l.cta, l.nome, l.nomeGrupo, l.pessoal ? 'sim' : 'não',
       l.orcado, l.realizado, l.desvio, l.execucao,
       l.orcadoAno, l.realizadoAno, l.projecao,
     ]),
@@ -460,39 +484,137 @@ function abaPorConta(v) {
   };
 }
 
+function abaPorGrupo(v) {
+  return {
+    nome: 'Por grupo',
+    colunas: [
+      { rotulo: 'Grupo', largura: 46 },
+      { rotulo: 'Contas', largura: 9, estilo: E.inteiro },
+      { rotulo: 'Orçado', largura: 17, estilo: E.moeda },
+      { rotulo: 'Realizado', largura: 17, estilo: E.moeda },
+      { rotulo: 'Desvio', largura: 17, estilo: E.moeda },
+      { rotulo: 'Execução %', largura: 12, estilo: E.pct },
+      { rotulo: 'Orçado no ano', largura: 17, estilo: E.moeda },
+    ],
+    linhas: v.linhasGrupo.slice().sort((a, b) => b.realizado - a.realizado).map(g => [
+      g.nome, g.contas, g.orcado, g.realizado, g.desvio, g.execucao, g.orcadoAno,
+    ]),
+    rodape: ['Total', v.linhasConta.length, v.total.orcado, v.total.realizado,
+             v.total.desvio, v.total.execucao, v.total.orcadoAno],
+  };
+}
+
 function abaContaMes(v) {
   const colunas = [
     { rotulo: 'Cta', largura: 8, estilo: E.inteiro },
     { rotulo: 'Conta', largura: 40 },
-    { rotulo: 'Grupo', largura: 34 },
+    { rotulo: 'Grupo', largura: 32 },
     { rotulo: 'Base', largura: 11 },
   ];
   for (let m = 1; m <= 12; m++) {
     colunas.push({ rotulo: fmt.mesLongo(m).replace(/^./, c => c.toUpperCase()),
-                   largura: 14, estilo: E.moeda });
+                   largura: 15, estilo: E.moeda });
   }
   colunas.push({ rotulo: 'Total', largura: 16, estilo: E.moeda });
 
   const linhas = [];
   v.linhasConta.slice().sort((a, b) => b.realizadoAno - a.realizadoAno).forEach(l => {
     const orcado = l.porMes.map(m => m.orcado);
-    // mês sem planilha vira texto "sem dados" — nunca zero, que mentiria
+    // mês sem relatório vira texto, nunca zero — zero mentiria sobre o mês
     const realizado = l.porMes.map(m => m.temDados ? m.realizado : 'sem dados');
     linhas.push([l.cta, l.nome, l.nomeGrupo, 'Orçado', ...orcado,
                  orcado.reduce((s, x) => s + x, 0)]);
     linhas.push([l.cta, l.nome, l.nomeGrupo, 'Realizado', ...realizado,
                  l.porMes.filter(m => m.temDados).reduce((s, m) => s + m.realizado, 0)]);
   });
-
   return { nome: 'Conta x mês', colunas, linhas };
 }
 
+function abaOndeAgir(v) {
+  const acima = v.linhasConta.filter(l => l.desvio > 0.01)
+    .sort((a, b) => b.desvio - a.desvio);
+  const total = acima.reduce((s, l) => s + l.desvio, 0);
+  const semOrcamento = v.linhasConta.filter(l => l.realizado > 0.01 && l.orcado <= 0.01)
+    .sort((a, b) => b.realizado - a.realizado);
+  const semRealizado = v.linhasConta
+    .filter(l => l.orcado > 0.01 && Math.abs(l.realizado) < l.orcado * 0.02)
+    .sort((a, b) => b.orcado - a.orcado);
+
+  const linhas = [];
+  const secao = t => linhas.push([{ v: t, estilo: E.negrito }, '', '', '', '', '', '']);
+  let acumulado = 0;
+
+  secao('ACIMA DO ORÇADO — ordenado pelo excesso em reais');
+  if (!acima.length) linhas.push(['(nenhuma)', '', '', '', '', '', '']);
+  acima.forEach(l => {
+    acumulado += l.desvio;
+    linhas.push([l.cta, l.nome, l.nomeGrupo, l.orcado, l.realizado, l.desvio,
+                 total ? (acumulado / total) * 100 : 0]);
+  });
+  linhas.push(['', '', '', '', '', '', '']);
+
+  secao('GASTO SEM ORÇAMENTO');
+  if (!semOrcamento.length) linhas.push(['(nenhuma)', '', '', '', '', '', '']);
+  semOrcamento.forEach(l => linhas.push([l.cta, l.nome, l.nomeGrupo, 0,
+                                         l.realizado, l.realizado, null]));
+  linhas.push(['', '', '', '', '', '', '']);
+
+  secao('ORÇAMENTO PARADO — verba reservada e execução quase nula');
+  if (!semRealizado.length) linhas.push(['(nenhuma)', '', '', '', '', '', '']);
+  semRealizado.forEach(l => linhas.push([l.cta, l.nome, l.nomeGrupo, l.orcado,
+                                         l.realizado, l.desvio, null]));
+
+  return {
+    nome: 'Onde agir',
+    colunas: [
+      { rotulo: 'Cta', largura: 12 },
+      { rotulo: 'Conta', largura: 40 },
+      { rotulo: 'Grupo', largura: 34 },
+      { rotulo: 'Orçado', largura: 16, estilo: E.moeda },
+      { rotulo: 'Realizado', largura: 16, estilo: E.moeda },
+      { rotulo: 'Desvio', largura: 16, estilo: E.moeda },
+      { rotulo: 'Acumulado do estouro %', largura: 20, estilo: E.pct },
+    ],
+    linhas,
+  };
+}
+
+function abaFornecedores(v) {
+  if (!v.fornecedores.length) return null;
+  const cobertura = v.cobertura;
+  return {
+    nome: 'Fornecedores',
+    titulo: ['Fornecedores — vem do RAZÃO do ERP, não da Análise de Custos',
+             'Cobre só a parte lançada em contas a pagar'
+             + (cobertura === null ? ''
+                : ` (${fmt.pct(cobertura)} do custo em `
+                  + v.mesesComAmbos.map(fmt.mes).join(', ') + ')')
+             + ': baixa de estoque e provisões não passam por aqui. '
+             + 'Não fecha com as outras abas, e não deve.'],
+    colunas: [
+      { rotulo: 'Fornecedor', largura: 42 },
+      { rotulo: 'Valor', largura: 16, estilo: E.moeda },
+      { rotulo: 'Participação %', largura: 14, estilo: E.pct },
+      { rotulo: 'Lançamentos', largura: 12, estilo: E.inteiro },
+      { rotulo: 'Ticket médio', largura: 15, estilo: E.moeda },
+      { rotulo: 'Contas', largura: 9, estilo: E.inteiro },
+      { rotulo: 'Meses ativos', largura: 12, estilo: E.inteiro },
+    ],
+    linhas: v.fornecedores.map(f => [f.nome, f.valor, f.participacao, f.lancamentos,
+                                     f.ticket, f.contas, f.meses]),
+    rodape: ['Total', v.totalLancado, 100, v.lancamentos.length, null, null, null],
+  };
+}
+
 function abaLancamentos(v) {
+  if (!v.lancamentos.length) return null;
   return {
     nome: 'Lançamentos',
+    titulo: ['Lançamentos do razão — subconjunto do custo, só o que passou por '
+             + 'contas a pagar'],
     colunas: [
-      { rotulo: 'Data', largura: 12, estilo: E.padrao },
-      { rotulo: 'Mês', largura: 8 },
+      { rotulo: 'Data', largura: 12 },
+      { rotulo: 'Mês', largura: 12 },
       { rotulo: 'Cta', largura: 8, estilo: E.inteiro },
       { rotulo: 'Conta', largura: 34 },
       { rotulo: 'Grupo', largura: 30 },
@@ -504,136 +626,35 @@ function abaLancamentos(v) {
     ],
     linhas: v.lancamentos.slice()
       .sort((a, b) => a.data.localeCompare(b.data) || b.valor - a.valor)
-      .map(l => [fmt.data(l.data), fmt.mesLongo(l.mes), l.cta, l.nomeConta, l.nomeGrupo,
-                 l.tipo, l.doc, l.fornecedor, l.historico, l.valor]),
+      .map(l => [fmt.data(l.data), fmt.mesLongo(l.mes), l.cta, l.nomeConta,
+                 l.nomeGrupo, l.tipo, l.doc, l.fornecedor, l.historico, l.valor]),
     rodape: ['Total', '', '', '', '', '', '', '', '', v.totalLancado],
   };
 }
 
-function abaFornecedores(v) {
+function abaConferencia(v, estado) {
   return {
-    nome: 'Fornecedores',
-    colunas: [
-      { rotulo: 'Fornecedor', largura: 42 },
-      { rotulo: 'Valor', largura: 16, estilo: E.moeda },
-      { rotulo: 'Participação %', largura: 14, estilo: E.pct },
-      { rotulo: 'Lançamentos', largura: 12, estilo: E.inteiro },
-      { rotulo: 'Ticket médio', largura: 15, estilo: E.moeda },
-      { rotulo: 'Contas', largura: 9, estilo: E.inteiro },
-      { rotulo: 'Meses ativos', largura: 12, estilo: E.inteiro },
-    ],
-    linhas: v.fornecedores.map(f => [
-      f.nome, f.valor, f.participacao, f.lancamentos, f.ticket, f.contas, f.meses,
-    ]),
-    rodape: ['Total', v.totalLancado, 100, v.lancamentos.length,
-             v.lancamentos.length ? v.totalLancado / v.lancamentos.length : 0, null, null],
-  };
-}
-
-function abaAlertas(v) {
-  const linhas = [];
-  const secao = titulo => linhas.push([{ v: titulo, estilo: E.negrito }, '', '', '', '', '']);
-
-  const semOrcamento = v.linhasConta
-    .filter(l => l.realizado > 0.01 && l.orcado <= 0.01)
-    .sort((a, b) => b.realizado - a.realizado);
-  const semRealizado = v.linhasConta
-    .filter(l => l.orcado > 0.01 && Math.abs(l.realizado) < l.orcado * 0.02)
-    .sort((a, b) => b.orcado - a.orcado);
-  const acima = v.linhasConta
-    .filter(l => l.orcado > 0.01 && l.realizado > l.orcado)
-    .sort((a, b) => b.desvio - a.desvio);
-
-  secao('REALIZADO SEM ORÇAMENTO — gasto sem valor orçado para os mesmos meses');
-  if (!semOrcamento.length) linhas.push(['(nenhuma)', '', '', '', '', '']);
-  semOrcamento.forEach(l => linhas.push([l.cta, l.nome, l.nomeGrupo, 0, l.realizado, l.realizado]));
-  linhas.push(['', '', '', '', '', '']);
-
-  secao('ORÇADO SEM REALIZADO — orçamento reservado e execução quase nula');
-  if (!semRealizado.length) linhas.push(['(nenhuma)', '', '', '', '', '']);
-  semRealizado.forEach(l => linhas.push([l.cta, l.nome, l.nomeGrupo, l.orcado, l.realizado, l.desvio]));
-  linhas.push(['', '', '', '', '', '']);
-
-  secao('ACIMA DO ORÇADO — passou de 100% do orçado do período');
-  if (!acima.length) linhas.push(['(nenhuma)', '', '', '', '', '']);
-  acima.forEach(l => linhas.push([l.cta, l.nome, l.nomeGrupo, l.orcado, l.realizado, l.desvio]));
-  linhas.push(['', '', '', '', '', '']);
-
-  secao('QUALIDADE DOS DADOS — conciliação por planilha');
-  linhas.push([{ v: 'Mês', estilo: E.negrito }, { v: 'Arquivo', estilo: E.negrito },
-               { v: 'Layout', estilo: E.negrito }, { v: 'Total do CC', estilo: E.negrito },
-               { v: 'Soma das contas', estilo: E.negrito },
-               { v: 'Conciliação', estilo: E.negrito }]);
-  v.meses.slice().sort((a, b) => a.mes - b.mes).forEach(m => {
-    linhas.push([fmt.mesLongo(m.mes), m.arquivo, m.layout, m.totalRealizado, m.somaContas,
-                 m.conciliado ? 'confere' : 'DIVERGENTE']);
-  });
-
-  return {
-    nome: 'Alertas',
-    colunas: [
-      { rotulo: 'Cta / item', largura: 14 },
-      { rotulo: 'Conta / arquivo', largura: 40 },
-      { rotulo: 'Grupo / layout', largura: 34 },
-      { rotulo: 'Orçado', largura: 16, estilo: E.moeda },
-      { rotulo: 'Realizado', largura: 16, estilo: E.moeda },
-      { rotulo: 'Desvio', largura: 16, estilo: E.moeda },
-    ],
-    linhas,
-  };
-}
-
-function abaDiesel(v) {
-  if (!v.diesel.length) return null;
-  const meses12 = Array.from({ length: 12 }, (_, i) => i + 1);
-  const resumo = meses12
-    .filter(m => v.litrosPorMes[m] !== undefined || v.combustivelPorMes[m] !== undefined)
-    .map(m => {
-      const litros = v.litrosPorMes[m];
-      const custo = v.mesesComDados.includes(m) ? v.combustivelPorMes[m] : undefined;
-      return [
-        fmt.mesLongo(m),
-        litros === undefined ? 'sem dados' : { v: litros, estilo: E.inteiro },
-        custo === undefined ? 'sem dados' : custo,
-        (litros && custo !== undefined) ? custo / litros : 'sem base',
-      ];
-    });
-
-  return {
-    nome: 'Diesel',
-    titulo: ['Consumo de óleo diesel — litros atendidos e custo por litro',
-             'Custo = realizado das contas 380 Óleo Diesel + 820 Combustível. '
-             + 'Cada requisição entra no mês do seu atendimento.'],
+    nome: 'Conferência',
+    titulo: ['Conferência dos relatórios de Análise de Custos',
+             'A soma das contas de cada mês tem de ser igual ao total impresso no '
+             + 'rodapé do PDF. É o que garante que a leitura das colunas não saiu '
+             + 'do lugar.'],
     colunas: [
       { rotulo: 'Mês', largura: 14 },
-      { rotulo: 'Litros', largura: 14, estilo: E.inteiro },
-      { rotulo: 'Custo de combustível', largura: 20, estilo: E.moeda },
-      { rotulo: 'R$ por litro', largura: 14, estilo: E.moeda },
+      { rotulo: 'Arquivo', largura: 34 },
+      { rotulo: 'Total do rodapé', largura: 18, estilo: E.moeda },
+      { rotulo: 'Soma das contas', largura: 18, estilo: E.moeda },
+      { rotulo: 'Conciliação', largura: 13 },
+      { rotulo: 'Orçado conferido', largura: 16, estilo: E.inteiro },
+      { rotulo: 'Orçado divergente', largura: 17, estilo: E.inteiro },
+      { rotulo: 'Receita realizada', largura: 18, estilo: E.moeda },
     ],
-    linhas: resumo,
-    rodape: ['Total', v.diesel.reduce((s, r) => s + r.litros, 0),
-             v.mesesFiltro.reduce((s, m) => s + (v.combustivelPorMes[m] || 0), 0), null],
-  };
-}
-
-function abaRequisicoesDiesel(v) {
-  if (!v.diesel.length) return null;
-  return {
-    nome: 'Requisições diesel',
-    colunas: [
-      { rotulo: 'Requisição', largura: 13, estilo: E.inteiro },
-      { rotulo: 'Emissão', largura: 12 },
-      { rotulo: 'Atendimento', largura: 13 },
-      { rotulo: 'Mês', largura: 12 },
-      { rotulo: 'Produto', largura: 26 },
-      { rotulo: 'Pedido', largura: 11, estilo: E.inteiro },
-      { rotulo: 'Litros', largura: 11, estilo: E.inteiro },
-    ],
-    linhas: v.diesel.slice()
-      .sort((a, b) => a.atendimento.localeCompare(b.atendimento))
-      .map(r => [r.requisicao, fmt.data(r.emissao), fmt.data(r.atendimento),
-                 fmt.mesLongo(r.mes), r.produto, r.pedido, r.litros]),
-    rodape: ['Total', '', '', '', '', null, v.diesel.reduce((s, r) => s + r.litros, 0)],
+    linhas: estado.dados.meses.slice().sort((a, b) => a.mes - b.mes).map(m => [
+      fmt.mesLongo(m.mes), m.arquivo, m.custoRealizado, m.somaContas,
+      m.conciliado ? 'confere' : 'DIVERGENTE',
+      m.orcadoConferido, m.orcadoDivergente,
+      m.receitaRealizada === null ? 'não lançada' : m.receitaRealizada,
+    ]),
   };
 }
 
@@ -644,19 +665,20 @@ async function baixarExcel(v, estado) {
   try {
     const abas = [
       abaResumo(v, estado),
+      abaResultado(v),
       abaPorGrupo(v),
       abaPorConta(v),
       abaContaMes(v),
-      abaLancamentos(v),
+      abaOndeAgir(v),
       abaFornecedores(v),
-      abaAlertas(v),
-      abaDiesel(v),
-      abaRequisicoesDiesel(v),
+      abaLancamentos(v),
+      abaConferencia(v, estado),
     ];
     const sufixo = estado.filtros.periodo === 'ytd'
       ? 'acumulado' : fmt.mes(Number(estado.filtros.periodo));
-    const nome = `Orcado-x-Realizado-${estado.base.centroCusto.codigo}-`
-               + `${estado.base.ano}-${sufixo}.xlsx`;
+    const nome = `Resultado-${estado.base.centroCusto.codigo}-`
+               + `${estado.base.ano}-${sufixo}`
+               + (estado.filtros.pessoal ? '' : '-sem-folha') + '.xlsx';
     await Xlsx.gerar(abas, nome);
   } catch (erro) {
     alert('Não consegui gerar o Excel: ' + erro.message);

@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Orçado × Realizado — Coordenação de Logística</title>
-<link rel="stylesheet" href="css/estilo.css">
+<title>Resultado e Orçamento — Coordenação de Logística</title>
+<link rel="stylesheet" href="css/estilo.css?v=51a1e5ad">
 </head>
 <body>
 
 <header class="topo">
   <div class="topo-texto">
-    <h1 id="titulo">Orçado × Realizado</h1>
+    <h1 id="titulo">Resultado e Orçamento</h1>
     <p class="subtitulo" id="subtitulo">Carregando…</p>
   </div>
   <div class="topo-acoes">
@@ -35,78 +35,154 @@
   </label>
   <label class="filtro filtro-busca">
     <span>Busca</span>
-    <input type="search" id="f-busca" placeholder="conta, fornecedor, documento…">
+    <input type="search" id="f-busca" placeholder="conta, grupo…">
   </label>
   <label class="filtro filtro-caixa">
-    <input type="checkbox" id="f-nao-monetario" checked>
-    <span>Incluir não monetário</span>
+    <input type="checkbox" id="f-pessoal">
+    <span>Mostrar pessoal (salário, FGTS, INSS, benefícios)</span>
   </label>
   <button type="button" id="btn-limpar" class="botao botao-discreto">Limpar</button>
 </div>
 
 <p class="nota nota-recorte" id="nota-recorte" hidden></p>
+<p class="nota nota-parcial" id="nota-parcial" hidden></p>
 <p class="aviso-filtro" id="aviso-filtro" hidden></p>
 
-<nav class="abas" role="tablist" aria-label="Seções do dashboard">
-  <button role="tab" class="aba" id="aba-visao" aria-controls="painel-visao" aria-selected="true">Visão geral</button>
-  <button role="tab" class="aba" id="aba-contas" aria-controls="painel-contas" aria-selected="false">Contas</button>
-  <button role="tab" class="aba" id="aba-lancamentos" aria-controls="painel-lancamentos" aria-selected="false">Lançamentos</button>
+<nav class="abas" role="tablist" aria-label="Seções do painel">
+  <button role="tab" class="aba" id="aba-resultado" aria-controls="painel-resultado" aria-selected="true">Resultado</button>
+  <button role="tab" class="aba" id="aba-orcado" aria-controls="painel-orcado" aria-selected="false">Orçado × Realizado</button>
+  <button role="tab" class="aba" id="aba-setores" aria-controls="painel-setores" aria-selected="false">Setores</button>
+  <button role="tab" class="aba" id="aba-agir" aria-controls="painel-agir" aria-selected="false">Onde agir <span class="pilula" id="pilula-agir"></span></button>
+  <button role="tab" class="aba" id="aba-frete" aria-controls="painel-frete" aria-selected="false">Frete faturado</button>
   <button role="tab" class="aba" id="aba-fornecedores" aria-controls="painel-fornecedores" aria-selected="false">Fornecedores</button>
-  <button role="tab" class="aba" id="aba-diesel" aria-controls="painel-diesel" aria-selected="false">Diesel</button>
-  <button role="tab" class="aba" id="aba-alertas" aria-controls="painel-alertas" aria-selected="false">Alertas <span class="pilula" id="pilula-alertas"></span></button>
   <button role="tab" class="aba" id="aba-dados" aria-controls="painel-dados" aria-selected="false">Dados</button>
 </nav>
 
 <main>
 
-<!-- ───────────────────────────── VISÃO GERAL ───────────────────────────── -->
-<section role="tabpanel" id="painel-visao" aria-labelledby="aba-visao">
-  <div class="kpis" id="kpis"></div>
+<!-- ───────────────────────────── RESULTADO ───────────────────────────── -->
+<section role="tabpanel" id="painel-resultado" aria-labelledby="aba-resultado">
+  <p class="nota nota-resultado" id="nota-resultado"></p>
+
+  <div class="heroi" id="heroi"></div>
+  <div class="kpis" id="kpis-resultado"></div>
+
+  <div class="grade grade-2">
+    <figure class="cartao">
+      <figcaption>
+        <h2>Receita × Custo por mês</h2>
+        <p class="legenda-texto">O que entrou contra o que saiu, realizado. Onde a barra de custo passa a de receita, o mês fechou no vermelho.</p>
+      </figcaption>
+      <div class="grafico" id="g-receita-custo"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-receita-custo"></div></details>
+    </figure>
+
+    <figure class="cartao">
+      <figcaption>
+        <h2>Resultado por mês</h2>
+        <p class="legenda-texto">Receita menos custo. Acima de zero, sobrou; abaixo, faltou. Mês sem receita lançada aparece hachurado, não como prejuízo.</p>
+      </figcaption>
+      <div class="grafico" id="g-resultado-mes"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-resultado-mes"></div></details>
+    </figure>
+
+    <figure class="cartao cartao-largo">
+      <figcaption>
+        <h2>Receita e custo acumulados</h2>
+        <p class="legenda-texto">Acumulado desde janeiro. A distância entre as duas linhas é o resultado do ano até aqui.</p>
+      </figcaption>
+      <div class="grafico" id="g-acumulado-resultado"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-acumulado-resultado"></div></details>
+    </figure>
+  </div>
+
+  <figure class="cartao">
+    <figcaption>
+      <h2>Receita, custo e resultado mês a mês</h2>
+      <p class="legenda-texto">Orçado e realizado de cada linha, com a margem sobre a receita.</p>
+    </figcaption>
+    <div class="tabela-rolagem" id="t-resultado"></div>
+  </figure>
+</section>
+
+<!-- ───────────────────────────── ORÇADO × REALIZADO ───────────────────────────── -->
+<section role="tabpanel" id="painel-orcado" aria-labelledby="aba-orcado" hidden>
+  <div class="kpis" id="kpis-orcado"></div>
 
   <div class="grade grade-2">
     <figure class="cartao">
       <figcaption>
         <h2>Orçado × Realizado por mês</h2>
-        <p class="legenda-texto">Meses sem planilha carregada aparecem vazios e rotulados <em>sem dados</em> — nunca como R$ 0,00.</p>
+        <p class="legenda-texto">Custo do centro de custo. Meses sem relatório carregado aparecem vazios e rotulados <em>sem dados</em>.</p>
       </figcaption>
-      <div class="grafico" id="g-mensal"></div>
-      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-mensal"></div></details>
+      <div class="grafico" id="g-orcado-mes"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-orcado-mes"></div></details>
     </figure>
 
     <figure class="cartao">
       <figcaption>
-        <h2>Execução acumulada no ano</h2>
-        <p class="legenda-texto">Acumulado mês a mês. A linha pontilhada projeta o fechamento somando o orçado dos meses ainda sem dados.</p>
+        <h2>Desvio por mês</h2>
+        <p class="legenda-texto">Realizado menos orçado. À direita do zero, gastou mais que o previsto.</p>
       </figcaption>
-      <div class="grafico" id="g-acumulado"></div>
-      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-acumulado"></div></details>
+      <div class="grafico" id="g-desvio-mes"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-desvio-mes"></div></details>
     </figure>
+  </div>
 
+  <figure class="cartao">
+    <figcaption>
+      <h2>Execução mês a mês, por conta</h2>
+      <p class="legenda-texto">Realizado ÷ orçado de cada mês. Azul abaixo do orçado, vermelho acima, cinza claro sem movimento; hachurado quando o mês não tem relatório.</p>
+    </figcaption>
+    <div class="grafico grafico-alto" id="g-heatmap"></div>
+  </figure>
+
+  <figure class="cartao">
+    <figcaption>
+      <h2>Orçado × Realizado por conta</h2>
+      <p class="legenda-texto">O relatório principal, e é ele que vira Excel. Clique no cabeçalho para ordenar.</p>
+    </figcaption>
+    <div class="tabela-rolagem" id="t-contas"></div>
+  </figure>
+</section>
+
+<!-- ───────────────────────────── SETORES ───────────────────────────── -->
+<section role="tabpanel" id="painel-setores" aria-labelledby="aba-setores" hidden>
+  <div class="grade grade-2">
     <figure class="cartao">
       <figcaption>
-        <h2>% de execução do orçado, por mês</h2>
-        <p class="legenda-texto">Realizado ÷ orçado do mês. A linha em 100% é a meta.</p>
+        <h2>Onde o dinheiro está indo</h2>
+        <p class="legenda-texto">Realizado por grupo de conta, com o orçado do período como referência.</p>
       </figcaption>
-      <div class="grafico" id="g-execucao"></div>
-      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-execucao"></div></details>
+      <div class="grafico" id="g-grupos"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-grupos"></div></details>
     </figure>
 
     <figure class="cartao">
       <figcaption>
         <h2>Desvio por grupo</h2>
-        <p class="legenda-texto">Realizado − orçado no período filtrado. À direita, gasto acima do previsto; à esquerda, abaixo.</p>
+        <p class="legenda-texto">Quanto cada grupo passou ou deixou de gastar em relação ao orçado.</p>
       </figcaption>
       <div class="grafico" id="g-desvio-grupo"></div>
       <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-desvio-grupo"></div></details>
     </figure>
 
-    <figure class="cartao cartao-largo">
+    <figure class="cartao">
       <figcaption>
-        <h2>Composição do realizado por grupo</h2>
-        <p class="legenda-texto">Participação de cada grupo no total realizado do período.</p>
+        <h2>Composição do realizado</h2>
+        <p class="legenda-texto">Participação de cada grupo no custo do período.</p>
       </figcaption>
       <div class="grafico" id="g-composicao"></div>
       <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-composicao"></div></details>
+    </figure>
+
+    <figure class="cartao">
+      <figcaption>
+        <h2 id="titulo-contas-do-grupo">Maiores contas</h2>
+        <p class="legenda-texto" id="legenda-contas-do-grupo">As 15 contas com maior realizado. Escolha um grupo no filtro para ver só as dele.</p>
+      </figcaption>
+      <div class="grafico" id="g-top-contas"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-top-contas"></div></details>
     </figure>
   </div>
 
@@ -116,95 +192,134 @@
   </figure>
 </section>
 
-<!-- ───────────────────────────── CONTAS ───────────────────────────── -->
-<section role="tabpanel" id="painel-contas" aria-labelledby="aba-contas" hidden>
+<!-- ───────────────────────────── ONDE AGIR ───────────────────────────── -->
+<section role="tabpanel" id="painel-agir" aria-labelledby="aba-agir" hidden>
+  <p class="nota" id="nota-agir"></p>
+
   <div class="grade grade-2">
     <figure class="cartao">
       <figcaption>
-        <h2>Maiores contas: realizado × orçado</h2>
-        <p class="legenda-texto">As 15 contas com maior realizado no período.</p>
+        <h2>O que está estourando o orçado</h2>
+        <p class="legenda-texto">Ordenado pelo excesso em reais, não em porcentagem: é o que move o resultado.</p>
       </figcaption>
-      <div class="grafico" id="g-top-contas"></div>
-      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-top-contas"></div></details>
+      <div class="grafico" id="g-estouro"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-estouro"></div></details>
     </figure>
 
     <figure class="cartao">
       <figcaption>
-        <h2>Concentração do gasto (Pareto)</h2>
-        <p class="legenda-texto">Participação de cada conta e o acumulado — mostra quantas contas explicam a maior parte do gasto.</p>
+        <h2>Concentração do estouro</h2>
+        <p class="legenda-texto">Quantas contas explicam a maior parte do excesso — por onde começar o plano de ação.</p>
       </figcaption>
-      <div class="grafico" id="g-pareto"></div>
-      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-pareto"></div></details>
+      <div class="grafico" id="g-pareto-estouro"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-pareto-estouro"></div></details>
     </figure>
   </div>
 
   <figure class="cartao">
     <figcaption>
-      <h2>Execução mês a mês, por conta</h2>
-      <p class="legenda-texto">Realizado ÷ orçado de cada mês. Azul abaixo do orçado, vermelho acima, cinza claro sem movimento; hachurado quando o mês não tem planilha.</p>
+      <h2>Acima do orçado</h2>
+      <p class="legenda-texto">Toda conta que passou do previsto no período, com o excesso e o quanto ele representa do estouro total.</p>
     </figcaption>
-    <div class="grafico grafico-alto" id="g-heatmap"></div>
+    <div class="tabela-rolagem" id="t-acima"></div>
   </figure>
 
   <figure class="cartao">
     <figcaption>
-      <h2>Orçado × Realizado por conta</h2>
-      <p class="legenda-texto">Relatório principal. Clique no cabeçalho para ordenar.</p>
+      <h2>Piorando mês a mês</h2>
+      <p class="legenda-texto">Contas cujo desvio vem crescendo nos últimos meses. É aqui que um plano de ação ainda muda o ano.</p>
     </figcaption>
-    <div class="tabela-rolagem" id="t-contas"></div>
+    <div class="tabela-rolagem" id="t-piorando"></div>
+  </figure>
+
+  <figure class="cartao">
+    <figcaption>
+      <h2>Gasto sem orçamento</h2>
+      <p class="legenda-texto">Contas com realizado e nenhum valor previsto para os mesmos meses.</p>
+    </figcaption>
+    <div class="tabela-rolagem" id="t-sem-orcamento"></div>
+  </figure>
+
+  <figure class="cartao">
+    <figcaption>
+      <h2>Orçamento parado</h2>
+      <p class="legenda-texto">Contas com verba reservada e execução quase nula. Costuma ser erro de classificação — o gasto foi lançado em outra conta.</p>
+    </figcaption>
+    <div class="tabela-rolagem" id="t-sem-realizado"></div>
   </figure>
 </section>
 
-<!-- ───────────────────────────── LANÇAMENTOS ───────────────────────────── -->
-<section role="tabpanel" id="painel-lancamentos" aria-labelledby="aba-lancamentos" hidden>
-  <div class="kpis kpis-compacto" id="kpis-lancamentos"></div>
+<!-- ───────────────────────────── FRETE FATURADO ───────────────────────────── -->
+<section role="tabpanel" id="painel-frete" aria-labelledby="aba-frete" hidden>
+  <p class="nota nota-resultado" id="nota-frete"></p>
+  <p class="nota nota-parcial-ativa" id="alerta-frete" hidden></p>
+
+  <div class="kpis kpis-compacto" id="kpis-frete"></div>
 
   <div class="grade grade-2">
     <figure class="cartao">
       <figcaption>
-        <h2>Lançamentos por tipo de documento</h2>
-        <p class="legenda-texto">Valor por origem do lançamento no ERP.</p>
+        <h2>Frete carrada faturado por mês</h2>
+        <p class="legenda-texto">O que as obras pagaram à logística em frete carrada, mês a mês.</p>
       </figcaption>
-      <div class="grafico" id="g-tipos"></div>
-      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-tipos"></div></details>
+      <div class="grafico" id="g-frete-mes"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-frete-mes"></div></details>
     </figure>
 
     <figure class="cartao">
       <figcaption>
-        <h2 id="titulo-por-dia">Valor lançado por dia</h2>
-        <p class="legenda-texto" id="legenda-por-dia">Concentração ao longo do período — normalmente revela as datas de fechamento.</p>
+        <h2>Quanto cada obra pagou</h2>
+        <p class="legenda-texto">Total do período por centro de resultado.</p>
       </figcaption>
-      <div class="grafico" id="g-por-dia"></div>
-      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-por-dia"></div></details>
+      <div class="grafico" id="g-frete-obra"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-frete-obra"></div></details>
+    </figure>
+
+    <figure class="cartao cartao-largo">
+      <figcaption>
+        <h2>Frete carrada dentro da receita</h2>
+        <p class="legenda-texto">Quanto do que a logística faturou vem de frete carrada. A parcela restante inclui o outro frete e os demais serviços.</p>
+      </figcaption>
+      <div class="grafico" id="g-frete-receita"></div>
+      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-frete-receita"></div></details>
     </figure>
   </div>
 
   <figure class="cartao">
     <figcaption>
-      <h2>Maiores lançamentos individuais</h2>
+      <h2>Composição da receita</h2>
+      <p class="legenda-texto">Frete carrada mais frete é o faturamento da logística. Onde o ERP publica receita, ela é a fonte oficial e a soma serve de conferência; onde o ERP está em branco, a soma passa a ser a receita — e o painel diz qual foi usada.</p>
     </figcaption>
-    <div class="tabela-rolagem" id="t-maiores-lancamentos"></div>
+    <div class="tabela-rolagem" id="t-frete-composicao"></div>
   </figure>
 
   <figure class="cartao">
     <figcaption>
-      <h2>Lançamentos detalhados</h2>
-      <p class="legenda-texto" id="contagem-lancamentos"></p>
+      <h2>Obra × mês</h2>
+      <p class="legenda-texto">Uma linha por centro de resultado, uma coluna por mês.</p>
     </figcaption>
-    <div class="tabela-rolagem" id="t-lancamentos"></div>
-    <div class="paginacao" id="paginacao-lancamentos"></div>
+    <div class="tabela-rolagem" id="t-frete-matriz"></div>
+  </figure>
+
+  <figure class="cartao">
+    <figcaption>
+      <h2>Conferência das planilhas de frete</h2>
+      <p class="legenda-texto">Resumo contra detalhe, e se o mês do nome da aba bate com a data dos lançamentos.</p>
+    </figcaption>
+    <div class="tabela-rolagem" id="t-frete-conferencia"></div>
   </figure>
 </section>
 
 <!-- ───────────────────────────── FORNECEDORES ───────────────────────────── -->
 <section role="tabpanel" id="painel-fornecedores" aria-labelledby="aba-fornecedores" hidden>
+  <p class="nota" id="nota-fornecedores"></p>
   <div class="kpis kpis-compacto" id="kpis-fornecedores"></div>
 
   <div class="grade grade-2">
     <figure class="cartao">
       <figcaption>
         <h2>Maiores fornecedores</h2>
-        <p class="legenda-texto">Os 15 fornecedores com maior valor no período.</p>
+        <p class="legenda-texto">Os 15 com maior valor no período.</p>
       </figcaption>
       <div class="grafico" id="g-top-fornecedores"></div>
       <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-top-fornecedores"></div></details>
@@ -212,7 +327,7 @@
 
     <figure class="cartao">
       <figcaption>
-        <h2>Concentração de fornecedores (Pareto)</h2>
+        <h2>Concentração de fornecedores</h2>
         <p class="legenda-texto">Quantos fornecedores concentram a maior parte do valor pago.</p>
       </figcaption>
       <div class="grafico" id="g-pareto-fornecedores"></div>
@@ -224,80 +339,23 @@
     <figcaption><h2>Fornecedores</h2></figcaption>
     <div class="tabela-rolagem" id="t-fornecedores"></div>
   </figure>
-</section>
 
-<!-- ───────────────────────────── DIESEL ───────────────────────────── -->
-<section role="tabpanel" id="painel-diesel" aria-labelledby="aba-diesel" hidden>
-  <p class="nota" id="nota-diesel" hidden></p>
-  <div class="kpis kpis-compacto" id="kpis-diesel"></div>
-
-  <div class="grade grade-2">
-    <figure class="cartao">
-      <figcaption>
-        <h2>Litros atendidos por mês</h2>
-        <p class="legenda-texto">Cada requisição entra no mês do seu atendimento.</p>
-      </figcaption>
-      <div class="grafico" id="g-litros"></div>
-      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-litros"></div></details>
-    </figure>
-
-    <figure class="cartao">
-      <figcaption>
-        <h2>Custo por litro</h2>
-        <p class="legenda-texto">Realizado de combustível (contas 380 + 820) ÷ litros atendidos, só nos meses que têm as duas informações. Indicativo: o relatório de litros mede consumo do estoque e as contas medem a compra — veja o aviso acima.</p>
-      </figcaption>
-      <div class="grafico" id="g-preco-litro"></div>
-      <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-preco-litro"></div></details>
-    </figure>
-  </div>
-
-  <figure class="cartao">
-    <figcaption><h2>Requisições de diesel</h2></figcaption>
-    <div class="tabela-rolagem" id="t-diesel"></div>
-    <div class="paginacao" id="paginacao-diesel"></div>
-  </figure>
-</section>
-
-<!-- ───────────────────────────── ALERTAS ───────────────────────────── -->
-<section role="tabpanel" id="painel-alertas" aria-labelledby="aba-alertas" hidden>
   <figure class="cartao">
     <figcaption>
-      <h2>Realizado sem orçamento</h2>
-      <p class="legenda-texto">Contas com gasto no período e nenhum valor orçado para os mesmos meses.</p>
+      <h2>Lançamentos</h2>
+      <p class="legenda-texto" id="contagem-lancamentos"></p>
     </figcaption>
-    <div class="tabela-rolagem" id="t-sem-orcamento"></div>
+    <div class="tabela-rolagem" id="t-lancamentos"></div>
+    <div class="paginacao" id="paginacao-lancamentos"></div>
   </figure>
 
   <figure class="cartao">
     <figcaption>
-      <h2>Orçado sem realizado</h2>
-      <p class="legenda-texto">Contas com orçamento reservado e execução praticamente nula — costuma indicar gasto classificado em outra conta.</p>
+      <h2>Consumo de diesel</h2>
+      <p class="legenda-texto" id="legenda-diesel"></p>
     </figcaption>
-    <div class="tabela-rolagem" id="t-sem-realizado"></div>
-  </figure>
-
-  <figure class="cartao">
-    <figcaption>
-      <h2>Acima do orçado</h2>
-      <p class="legenda-texto">Contas que passaram de 100% do orçado do período, ordenadas pelo excesso em reais.</p>
-    </figcaption>
-    <div class="tabela-rolagem" id="t-acima"></div>
-  </figure>
-
-  <figure class="cartao">
-    <figcaption>
-      <h2>Maior variação entre meses</h2>
-      <p class="legenda-texto">Diferença entre o maior e o menor mês de cada conta, entre os meses com dados.</p>
-    </figcaption>
-    <div class="tabela-rolagem" id="t-variacao"></div>
-  </figure>
-
-  <figure class="cartao">
-    <figcaption>
-      <h2>Qualidade dos dados</h2>
-      <p class="legenda-texto">Conciliação de cada planilha: total do centro de custo × soma das contas × soma dos lançamentos.</p>
-    </figcaption>
-    <div class="tabela-rolagem" id="t-qualidade"></div>
+    <div class="grafico" id="g-litros"></div>
+    <details class="tabela-alternativa"><summary>Ver como tabela</summary><div id="t-g-litros"></div></details>
   </figure>
 </section>
 
@@ -305,44 +363,59 @@
 <section role="tabpanel" id="painel-dados" aria-labelledby="aba-dados" hidden>
   <figure class="cartao">
     <figcaption>
-      <h2>Adicionar planilhas</h2>
+      <h2>De onde vem cada número</h2>
+    </figcaption>
+    <div class="tabela-rolagem" id="t-fontes"></div>
+  </figure>
+
+  <figure class="cartao">
+    <figcaption>
+      <h2>Conferência dos relatórios</h2>
+      <p class="legenda-texto">Em cada mês, a soma das contas do PDF tem de ser igual ao total impresso no rodapé. É a checagem que garante que a leitura das colunas não saiu do lugar.</p>
+    </figcaption>
+    <div class="tabela-rolagem" id="t-conferencia"></div>
+  </figure>
+
+  <figure class="cartao">
+    <figcaption>
+      <h2>Adicionar um mês</h2>
       <p class="legenda-texto">
-        Arraste os <code>.xlsx</code> de <strong>inversão gerencial</strong> ou de <strong>consumo de diesel</strong>.
-        Eles entram na análise na hora e ficam salvos neste navegador.
-        Para que quem abrir o link também veja, coloque o arquivo em <code>planilhas/</code>,
-        rode <code>python atualizar.py</code> e publique.
+        O painel roda sobre o PDF <strong>FFOR501 — Inversão Gerencial / Análise de Custos</strong>.
+        Coloque o arquivo em <code>planilhas/analise/</code>, rode
+        <code>python atualizar.py</code> e publique.
+      </p>
+    </figcaption>
+    <ol class="passos">
+      <li>No ERP, tire o relatório <strong>Análise de Custos</strong> do centro de custo 2930 para o período novo, em PDF.</li>
+      <li>Salve em <code>planilhas/analise/</code>.</li>
+      <li>Rode <code>python atualizar.py</code>. Ele confere a conciliação de cada mês e regrava <code>js/dados.js</code>.</li>
+      <li><code>git add -A &amp;&amp; git commit -m "análise de custos de julho" &amp;&amp; git push</code>.</li>
+    </ol>
+    <p class="legenda-texto">
+      Mês repetido em dois PDFs não duplica: o último arquivo lido vence, e o script avisa.
+    </p>
+  </figure>
+
+  <figure class="cartao">
+    <figcaption>
+      <h2>Detalhe de fornecedor (opcional)</h2>
+      <p class="legenda-texto">
+        Os <code>.xlsx</code> do razão só alimentam a aba Fornecedores. Pode arrastar aqui —
+        eles entram na hora e ficam salvos neste navegador. PDF não é lido no navegador:
+        vai pelo script.
       </p>
     </figcaption>
     <div class="area-solta" id="area-solta" tabindex="0" role="button"
-         aria-label="Selecionar planilhas para adicionar">
+         aria-label="Selecionar planilhas de razão">
       <p><strong>Arraste aqui</strong> ou clique para escolher os arquivos</p>
-      <p class="legenda-texto">Somente <code>.xlsx</code>. O orçamento (<code>.xls</code>) é lido pelo script <code>atualizar.py</code>.</p>
-      <input type="file" id="entrada-arquivo" accept=".xlsx" multiple hidden>
+      <p class="legenda-texto">Somente <code>.xlsx</code> de inversão gerencial ou de diesel.</p>
+      <input type="file" id="entrada-arquivo" accept=".xlsx,.pdf" multiple hidden>
     </div>
     <div id="retorno-upload" class="retorno" aria-live="polite"></div>
-  </figure>
-
-  <figure class="cartao">
-    <figcaption>
-      <h2>Planilhas carregadas</h2>
-    </figcaption>
-    <div class="tabela-rolagem" id="t-arquivos"></div>
     <div class="acoes-linha">
-      <button type="button" id="btn-limpar-enviados" class="botao botao-discreto">Remover todos os arquivos enviados</button>
-      <button type="button" id="btn-baixar-dados" class="botao botao-discreto">Baixar dados.js (para publicar)</button>
+      <button type="button" id="btn-limpar-enviados" class="botao botao-discreto">Remover os arquivos enviados</button>
+      <button type="button" id="btn-baixar-dados" class="botao botao-discreto">Baixar dados.js</button>
     </div>
-  </figure>
-
-  <figure class="cartao">
-    <figcaption>
-      <h2>Como publicar no GitHub Pages</h2>
-    </figcaption>
-    <ol class="passos">
-      <li>Coloque as novas planilhas em <code>planilhas/inversoes/</code> (ou <code>planilhas/diesel/</code>).</li>
-      <li>Rode <code>python atualizar.py</code>. Ele confere a conciliação e regrava <code>js/dados.js</code>.</li>
-      <li><code>git add -A &amp;&amp; git commit -m "dados de agosto" &amp;&amp; git push</code>.</li>
-      <li>No GitHub: <em>Settings → Pages → Source: branch main, pasta / (root)</em>.</li>
-    </ol>
   </figure>
 </section>
 
@@ -354,10 +427,10 @@
 
 <div class="dica" id="dica" role="tooltip" aria-hidden="true"></div>
 
-<script src="js/dados.js"></script>
-<script src="js/graficos.js"></script>
-<script src="js/xlsx.js"></script>
-<script src="js/leitor.js"></script>
-<script src="js/app.js"></script>
+<script src="js/dados.js?v=4218b3e2"></script>
+<script src="js/graficos.js?v=eca7b977"></script>
+<script src="js/xlsx.js?v=ddb8260e"></script>
+<script src="js/leitor.js?v=a47385ee"></script>
+<script src="js/app.js?v=e2b6cb4e"></script>
 </body>
 </html>

@@ -13,7 +13,7 @@
   --plano:             #f9f9f7;   /* plano da página */
   --tinta:             #0b0b0b;
   --tinta-2:           #52514e;
-  --tinta-fraca:       #898781;
+  --tinta-fraca:       #6f6d67;   /* 5,0:1 no plano claro; #898781 dava 3,4 */
   --grade:             #e1e0d9;
   --eixo:              #c3c2b7;
   --borda:             rgba(11, 11, 11, 0.10);
@@ -41,7 +41,10 @@
   --atencao:  #fab219;
   --serio:    #ec835a;
   --critico:  #d03b3b;
+  /* variantes de TEXTO: o vermelho e o verde de preencher barra não
+     alcançam 4,5:1 como texto, então cada tema tem a sua. */
   --texto-bom: #006300;
+  --texto-critico: #b32d28;
 
   --raio: 10px;
   --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -79,6 +82,7 @@
     --div-quente-forte:#f0a3a3;
 
     --texto-bom: #0ca30c;
+    --texto-critico: #e5605c;
   }
 }
 
@@ -111,6 +115,7 @@
   --div-quente-forte:#f0a3a3;
 
   --texto-bom: #0ca30c;
+  --texto-critico: #e5605c;
 }
 
 /* -------------------------------------------------- base */
@@ -373,7 +378,7 @@ code {
 
 .kpi-delta { font-size: 0.8rem; font-weight: 600; margin-top: 5px; }
 .kpi-delta.bom  { color: var(--texto-bom); }
-.kpi-delta.ruim { color: var(--critico); }
+.kpi-delta.ruim { color: var(--texto-critico); }
 
 .kpi-destaque .kpi-valor { font-size: 1.85rem; }
 
@@ -536,7 +541,9 @@ table.dados tfoot td {
   background: var(--superficie);
 }
 
-.acima { color: var(--critico); }
+.bom    { color: var(--texto-bom); }
+.ruim   { color: var(--texto-critico); }
+.acima  { color: var(--texto-critico); }   /* direção, em desvio de custo */
 .abaixo { color: var(--texto-bom); }
 .neutro { color: var(--tinta-fraca); }
 
@@ -544,7 +551,7 @@ table.dados tfoot td {
 .marca-status::before { font-size: 0.9em; line-height: 1; }
 .marca-status.ok    { color: var(--texto-bom); }
 .marca-status.ok::before { content: "✓"; }
-.marca-status.falha { color: var(--critico); }
+.marca-status.falha { color: var(--texto-critico); }
 .marca-status.falha::before { content: "✕"; }
 .marca-status.aviso { color: var(--serio); }
 .marca-status.aviso::before { content: "▲"; }
@@ -663,4 +670,59 @@ table.dados tfoot td {
 .nota-recorte {
   border-left-color: var(--serie-1);
   margin-bottom: 10px;
+}
+
+/* -------------------------------------------------- número herói do resultado
+   Exatamente um por tela, na mesma sans do resto — nunca display ou serifada.
+   Figuras proporcionais: tabular-nums deixa um número grande solto e frouxo. */
+.heroi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 24px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-left: 4px solid var(--eixo);
+  border-radius: var(--raio);
+}
+.heroi.positivo { border-left-color: var(--bom); }
+.heroi.negativo { border-left-color: var(--critico); }
+
+.heroi-bloco { display: flex; flex-direction: column; gap: 2px; }
+
+.heroi-rotulo {
+  font-size: 0.78rem;
+  color: var(--tinta-2);
+}
+
+.heroi-valor {
+  font-size: clamp(1.9rem, 5vw, 2.9rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+.heroi.positivo .heroi-valor { color: var(--texto-bom); }
+.heroi.negativo .heroi-valor { color: var(--texto-critico); }
+
+.heroi-nota { font-size: 0.8rem; color: var(--tinta-fraca); }
+
+.heroi-secundario { margin-left: auto; text-align: right; }
+.heroi-secundario .heroi-valor { font-size: 1.3rem; color: var(--tinta); }
+
+@media (max-width: 700px) {
+  .heroi-secundario { margin-left: 0; text-align: left; }
+}
+
+/* nota do resultado: o cálculo sempre usa o custo cheio, inclusive folha */
+.nota-resultado { border-left-color: var(--serie-1); }
+
+/* aviso de mês parcial: discreto quando é só informativo, forte quando o mês
+   parcial está selecionado e o leitor precisa saber o que está olhando */
+.nota-parcial { border-left-color: var(--tinta-fraca); }
+.nota-parcial-ativa {
+  border-left-color: var(--atencao);
+  border-left-width: 4px;
+  color: var(--tinta);
 }

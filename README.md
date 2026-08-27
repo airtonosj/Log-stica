@@ -1,234 +1,298 @@
-# Orçado × Realizado — CC 2930 Coordenação de Logística
+# Resultado e Orçamento — CC 2930 Coordenação de Logística
 
-Dashboard estático que cruza as **inversões gerenciais** do ERP com o **orçamento
-aprovado** do centro de custo 2930. Não tem servidor, não tem build, não usa
-biblioteca nenhuma: dá para publicar no GitHub Pages e abrir por link.
+Painel estático que mostra **quanto entrou, quanto saiu e onde o orçamento está
+estourando** no centro de custo 2930. Sem servidor, sem build, sem biblioteca no
+navegador: dá para publicar no GitHub Pages e abrir por link.
 
-> **Recorte operacional.** As contas de pessoal e folha ficam fora: salário,
-> INSS, FGTS, IRRF, férias, 13º, rescisões, plano de saúde e odontológico,
-> seguro de vida, alimentação, vale transporte, benefícios, consignado, pensão,
-> exames, contribuição sindical. São 33 contas e R$ 2,9 mi no período — os
-> totais do painel **não** são o custo inteiro do centro de custo. Para mudar o
-> recorte, edite as constantes no topo de `atualizar.py` (veja abaixo).
+A pergunta que ele responde primeiro: *estou gastando mais do que estou ganhando?*
 
-- **Aba Visão geral** — orçado × realizado por mês, execução acumulada com projeção
-  de fechamento, desvio por grupo e composição do gasto.
-- **Aba Contas** — maiores contas, concentração (Pareto), execução mês a mês por
-  conta e o relatório completo orçado × realizado.
-- **Aba Lançamentos** — os ~8.250 lançamentos, por tipo de documento, por dia, e os
-  maiores individuais.
-- **Aba Fornecedores** — ranking, concentração e ficha de cada fornecedor.
-- **Aba Diesel** — litros atendidos e custo por litro.
-- **Aba Alertas** — gasto sem orçamento, orçamento sem gasto, contas acima do
-  orçado, maior variação entre meses e a conferência de cada planilha.
-- **Aba Dados** — arrastar planilhas novas e baixar o Excel.
+> **Pendências e defeitos nos dados:** ver [PENDENCIAS.md](PENDENCIAS.md) — dez achados nas fontes e quatro itens que ainda faltam coletar, com o impacto de cada um.
 
-Todos os filtros do topo (período, grupo, conta, busca, incluir não monetário)
-valem para **tudo** ao mesmo tempo: gráficos, tabelas e o Excel exportado.
+- **Resultado** — receita × custo, mês a mês e acumulado, com o resultado em
+  destaque. É a aba que abre.
+- **Orçado × Realizado** — orçado, realizado, diferença e execução, por mês e por
+  conta, mais a matriz conta × mês.
+- **Setores** — em quais grupos de conta o dinheiro está indo, e o desvio de cada um.
+- **Onde agir** — o que está estourando o orçado, ordenado pelo excesso **em reais**;
+  contas piorando mês a mês; gasto sem orçamento; orçamento parado.
+- **Frete faturado** — quanto cada obra pagou de frete carrada, mês a mês, e quanto
+  isso representa da receita.
+- **Fornecedores** — quem recebeu (vem do razão, cobre parte do custo; ver abaixo).
+- **Dados** — de onde vem cada número e a conferência de cada relatório.
+
+Os filtros do topo (período, grupo, conta, busca, **mostrar pessoal**) valem para
+tudo ao mesmo tempo: gráficos, tabelas e o Excel exportado.
 
 ---
 
-## Adicionar um mês novo
+## As fontes, e por que essa ordem
 
-Há dois caminhos. Eles servem a propósitos diferentes.
+| Fonte | O que dá | Papel |
+|---|---|---|
+| `planilhas/analise/*.pdf` — **FFOR501, Análise de Custos** | custo realizado por conta e por mês, **e a receita** | **primária** |
+| `planilhas/orcamento/*.xls` — Programa Orçamentário | orçado dos 12 meses, nomes de conta, grupos | primária |
+| `planilhas/inversoes/*.xlsx` — FFOR001/FFOR401, o razão | fornecedor e documento de cada nota | secundária |
+| `planilhas/diesel/*.xlsx` — SECE214 | litros consumidos | secundária |
+| `planilhas/frete/*.xlsx` — FRETE CARRADA | faturamento de frete por obra, pelas abas de RESUMO | secundária |
 
-### 1. Rápido, só para você: arrastar no navegador
+**Por que o PDF e não o razão.** Em jan–jul o razão soma R$ 10,79 mi e a Análise
+de Custos R$ 19,00 mi. A diferença é quase toda **óleo diesel** — R$ 6,32 mi que o
+razão mostra como zero, porque diesel é baixa de estoque e nunca vira nota em
+contas a pagar — mais provisões como o INSS. O razão subestimava o custo em 76%.
 
-Abra a aba **Dados** e arraste o `.xlsx` de inversão gerencial. Ele entra na
-análise na hora e fica guardado neste navegador.
+**Relatórios que se sobrepõem.** `04 a 06` e `05 a 07` trazem maio e junho os
+dois, e discordam: junho saiu com R$ 2.638.995,78 no primeiro e R$ 2.643.116,20 no
+segundo, porque o ERP lança retroativo. Onde há sobreposição, **vence o relatório
+de período mais recente** — é o que fecha o acumulado impresso. O script ordena
+pelo fim do período e apaga os valores do mês antes de regravá-los, para que uma
+conta que existia no relatório antigo e não existe no novo não fique pendurada.
 
-O mês é detectado pelo próprio arquivo — não precisa dizer qual é. Se o mês já
-estava carregado, o arquivo novo substitui o antigo (retificação do ERP é comum).
+Consequência prática: a aba **Fornecedores** cobre só a parte lançada em contas a
+pagar (cerca de dois terços do custo) e **não fecha** com as outras abas. Ela está
+lá porque é a única fonte de *quem recebeu o dinheiro*; o aviso no topo da aba diz
+isso, e ela fica fora dos KPIs.
 
-Serve para dar uma olhada rápida. **Quem abrir o link não vê esse mês**, porque
-ele só existe no seu navegador.
+---
 
-### 2. Definitivo: gerar os dados e publicar
+## Adicionar um mês
 
 ```bash
 python atualizar.py
 ```
 
-1. Coloque o arquivo em `planilhas/inversoes/` (ou `planilhas/diesel/`, ou
-   `planilhas/orcamento/` se o orçamento for revisado).
-2. Rode o comando acima. Ele confere a conciliação de cada planilha e regrava
-   `js/dados.js`.
-3. Faça commit e push. Agora todo mundo que abre o link vê o mês novo.
+1. No ERP, tire o relatório **Inversão Gerencial / Análise de Custos** (`FFOR501`)
+   do centro de custo 2930 para o período novo, em PDF.
+2. Salve em `planilhas/analise/`.
+3. Rode o comando. Ele confere a conciliação de cada mês e regrava `js/dados.js`.
+4. `git add -A && git commit -m "análise de custos de julho" && git push`.
 
-O script **sai com erro se alguma planilha não conciliar** — de propósito, para
-não publicar número errado sem perceber. A saída é assim:
+O script **sai com erro se algum mês não conciliar**, de propósito, para não
+publicar número errado sem perceber:
 
 ```
-Inversões gerenciais (7 arquivos)
-   mês lay      total do CC           contas      lançamentos    Δ cta   Δ lanç
-  -----------------------------------------------------------------------------
-   jan   A     1.664.797,04     1.664.797,04     1.664.797,04     0.00     0.00
-   jun   A     1.424.212,89     1.424.212,89     1.424.212,89     0.00     0.00
-   jul   B     1.544.364,43     1.544.364,43     1.544.364,43     0.00     0.00
+Análise de Custos — FONTE PRIMÁRIA (2 PDFs)
+   mês   soma das contas     rodapé do PDF        Δ
+   jan      1.918.222,20      1.918.222,20     0.00
+   fev      3.896.283,41      3.896.283,41     0.00
 ```
 
-As três colunas de valor têm de ser iguais: o total do centro de custo, a soma
-das 93 contas e a soma dos lançamentos. `Δ` é o quanto elas divergem — o normal
-é `0.00`.
+A soma das contas de cada mês tem de ser igual ao total impresso no rodapé do PDF.
+`Δ` é o quanto elas divergem — o normal é `0.00`. Se sair diferente, a leitura das
+colunas saiu do lugar e nenhum número do painel é confiável.
 
-Não precisa de nenhuma biblioteca Python instalada. Os leitores de `.xlsx` e de
-`.xls` estão em `leitores/`, escritos à mão, porque o `openpyxl` não abre os
-arquivos deste ERP (ele quebra no stylesheet).
+Mês repetido em dois PDFs não duplica: o último arquivo lido vence, e o script avisa.
+
+**PDF não é lido no navegador** — precisaria de uma biblioteca de ~1 MB, e o projeto
+não tem dependência de front. Os `.xlsx` do razão, sim: pode arrastar na aba Dados
+para atualizar só a aba Fornecedores.
+
+Nenhuma biblioteca Python é necessária além do **pdfplumber**, que lê o PDF. Os
+leitores de `.xlsx` e de `.xls` estão em `leitores/`, escritos à mão, porque o
+`openpyxl` não abre os arquivos deste ERP (quebra no stylesheet).
 
 ---
 
-## Publicar no GitHub Pages
+## Mês parcial: quando só existe o detalhamento
 
-```bash
-git init
-git add -A
-git commit -m "dashboard orçado x realizado 2930"
-git branch -M main
-git remote add origin https://github.com/SEU-USUARIO/SEU-REPO.git
-git push -u origin main
-```
+Julho tem o razão (`planilhas/inversoes/`) mas ainda não tem Análise de Custos.
+Ele entra no painel **marcado como parcial**, porque o razão vê pouco mais da
+metade do custo. Junho, o único mês com as duas fontes, mostra o tamanho do
+problema:
 
-No GitHub: **Settings → Pages → Source: branch `main`, pasta `/ (root)`**.
-Em um ou dois minutos o link fica no ar.
+| | Junho |
+|---|---|
+| Análise de Custos | R$ 2.638.995,78 |
+| Razão | R$ 1.424.212,89 |
+| **O razão vê** | **54% do custo** |
 
-Se o repositório for **público**, qualquer pessoa com o link vê os dados
-financeiros do centro de custo. Para uso interno, deixe **privado** — o GitHub
-Pages de repositório privado exige plano pago; a alternativa é o arquivo único
-abaixo.
+O que o razão não vê, em junho:
 
-### Arquivo único, para enviar por e-mail ou abrir sem servidor
+| Conta | Análise | Razão | Invisível |
+|---|---|---|---|
+| **380 Óleo Diesel** | R$ 1.039.941,13 | **R$ 0,00** | R$ 1.039.941,13 |
+| 1200 Peças e pneus | R$ 622.270,88 | R$ 465.007,67 | R$ 157.263,21 |
 
-```bash
-python atualizar.py --bundle
-```
+Então o mês parcial:
 
-Gera `dashboard-completo.html` com CSS, JS e dados embutidos — um arquivo só,
-sem nenhuma dependência externa. Dá para mandar anexado ou abrir com duplo
-clique.
+- **aparece** no gráfico mensal, com hachura na cor da série e o rótulo *parcial*,
+  e é selecionável no filtro como *Julho (parcial)*;
+- **fica fora** do Acumulado, do desvio por mês, do mapa de calor, da projeção e
+  do resultado — somar meio custo aos meses cheios daria um total que não é nem
+  uma coisa nem outra;
+- ao ser selecionado, **suprime desvio e execução** (aparecem como *não
+  comparável*) e desliga a aba **Onde agir**: um desvio calculado sobre metade do
+  custo mostraria uma economia que não existe;
+- mantém **fornecedores e lançamentos**, que é o dado em que o razão é completo e
+  confiável.
 
----
-
-## Baixar o relatório em Excel
-
-Botão **Baixar Excel** no topo. Sai um `.xlsx` com nove abas — Resumo, Por grupo,
-Por conta, Conta x mês, Lançamentos, Fornecedores, Alertas, Diesel e Requisições
-diesel — já no formato pt-BR, com cabeçalho fixo e filtro automático.
-
-O arquivo respeita os filtros que estiverem ativos na tela. A aba `Resumo`
-registra qual recorte foi exportado e quando.
+Quando o PDF de julho chegar, basta salvá-lo em `planilhas/analise/` e rodar o
+script: o mês deixa de ser parcial sozinho, sem mexer em código.
 
 ---
 
-## Mudar o recorte operacional
+## Frete carrada faturado às obras
 
-No topo de `atualizar.py`:
+As planilhas em `planilhas/frete/` trazem, por mês, quanto cada obra pagou de
+frete carrada. O painel usa as abas de **RESUMO** (o valor por CR) e confere
+contra a aba de detalhe.
+
+Nos meses com receita lançada, o frete carrada é **de 52% a 59% da receita** da
+logística — média de 56,8%. Ou seja: é a maior parcela do faturamento, mas **não
+é o faturamento todo**. Falta a outra parte do frete, que vem de um relatório
+ainda fora do painel.
+
+### A receita é frete carrada + frete
+
+São dois serviços diferentes, para obras diferentes: **frete carrada** (as
+planilhas de RESUMO) e **frete** (um relatório separado, em
+`planilhas/frete/faturamento-frete.csv`). Somados, dão o faturamento da
+logística.
+
+Isso foi **conferido, não suposto**: nos meses em que o ERP publica receita, a
+soma dos dois fecha ao centavo.
+
+| Mês | Frete carrada | Frete | Soma | Receita do ERP | Δ |
+|---|---|---|---|---|---|
+| janeiro | 1.084.940,71 | 1.013.072,36 | 2.098.013,07 | 2.098.013,08 | −0,01 |
+| fevereiro | 939.543,50 | 719.052,09 | 1.658.595,59 | 1.658.595,60 | −0,01 |
+| março | 1.560.327,29 | 1.066.086,43 | 2.626.413,72 | 2.626.413,74 | −0,02 |
+
+Foi essa conta que identificou a qual mês pertencia cada valor de frete: só um
+valor do conjunto fecha a receita de cada mês.
+
+**Onde o ERP publica receita, ela é a fonte oficial** e a soma serve de
+conferência. **Onde o ERP está em branco**, a soma passa a ser a receita, e a
+coluna *Fonte* na aba Frete faturado diz qual foi usada. Faltando qualquer uma
+das duas parcelas, a receita fica **em branco** — nunca zero.
+
+Para acrescentar um mês, edite `planilhas/frete/faturamento-frete.csv`
+(`mes;valor;observacao`) e rode o script.
+
+### Duas armadilhas nestes arquivos
+
+1. **Datas digitadas erradas em duas abas**, já confirmadas com quem mantém a
+   planilha e registradas em `MES_CONFIRMADO` no topo de `atualizar.py`:
+   `JAN-26` tem lançamentos datados de ago/2025 e `ABR-26` de mai/2026 — em ambos
+   o mês certo é o do nome da aba. O painel mostra a data real ao lado, para o
+   problema não se perder.
+2. **`FRETE CARRADAS JUL-26 `** (com espaço no fim) dentro do arquivo principal é
+   uma **cópia de junho**. O julho de verdade está em
+   `BASE FRETE CARRADAS ENVIO JUL - 26.xlsx`, e é esse que o painel usa.
+
+Segue aberto: em **janeiro** o resumo (R$ 1.084.940,71) e o detalhe
+(R$ 1.308.362,10) divergem em **R$ 223.421,39**. O painel usa o resumo, como
+combinado, e a aba de conferência marca a divergência.
+
+### Nome de obra escrito de formas diferentes
+
+O script une automaticamente o que é **só diferença de grafia** — acento,
+espaço, hífen — e diz o que uniu:
+
+```
+MINERADORA PF     <-  MINERADORA PF, MINERADORA-PF
+OLINDA NOVA - MA  <-  OLINDA NOVA - MA, OLINDA NOVA-MA
+TAIPAS - TO       <-  TAIPAS - TO, TAIPAS-TO
+DUERE-TO          <-  DUERE-TO, DUERÉ-TO
+```
+
+O que **não** une, e lista para você confirmar, porque é decisão de quem conhece
+o contrato:
+
+| Termo | Nomes distintos |
+|---|---|
+| AUGUSTINOPOLIS | `AUGUSTINOPOLIS-TO` · `AUGUSTINOPOLIS TO (EDEC)` · `MANUTENÇAO DE VIAS AGETO(AUGUSTINOPOLIS -TO` |
+| PALMEIROPOLIS | `PALMEIROPOLIS-TO` · `CONSORCIO TOCANTIS (PALMEIROPOLIS-TO)` |
+| PINHEIRO | `UA PINHEIRO` · `UA PINHEIRO - MA` · `OLINDA NOVA - MA (PINHEIRO)` |
+| OLINDA NOVA | `OLINDA NOVA - MA` · `UA OLINDA NOVA - MA` · `OLINDA NOVA - MA (PINHEIRO)` |
+| DUERE | `DUERE-TO` · `TUCUMA DUERE` |
+
+Se algum par é a mesma obra, padronize o nome na planilha e rode o script de
+novo — ou me diga e eu adiciono a regra.
+
+---
+
+## O botão "mostrar pessoal"
+
+Desligado por padrão. Ele esconde as 23 contas de folha — salário, FGTS, INSS,
+IRRF, férias, rescisões, plano de saúde, benefícios, vale transporte, contribuição
+sindical — para o detalhe de custo ficar legível.
+
+Duas coisas importantes:
+
+- **Ligado, o custo do painel fecha exatamente com o total do relatório do ERP**
+  (R$ 19.002.148,51 em jan–jul). Desligado, cai R$ 3.256.120,71, que é a folha.
+- **A aba Resultado usa sempre o custo cheio**, com folha, ligado ou desligado.
+  O resultado da operação não muda porque alguém escondeu uma coluna. O Excel
+  exportado sem folha sai com `-sem-folha` no nome, para não haver confusão depois.
+
+Para mudar o que conta como pessoal, edite no topo de `atualizar.py`:
 
 ```python
-GRUPOS_EXCLUIDOS = {410}      # DESPESAS COM PESSOAL, inteiro
-CONTAS_EXCLUIDAS = {1360, 1370}   # contribuição sindical (encargo fora do grupo)
-CONTAS_MANTIDAS = set()       # contas do grupo excluído que você quer de volta
+GRUPOS_DE_PESSOAL = {410}          # DESPESAS COM PESSOAL, inteiro
+CONTAS_DE_PESSOAL = {1360, 1370}   # contribuição sindical, fora do grupo
 ```
 
-Excluir o **grupo** inteiro, e não uma lista de contas, é de propósito: se o ERP
-criar uma conta de benefício nova no mês que vem, ela já sai de fora sozinha em
-vez de entrar sem ninguém notar.
-
-Três contas do grupo de pessoal são discutíveis, porque na prática são custo de
-operação. Elas saíram junto e você pode trazer de volta pondo o código em
-`CONTAS_MANTIDAS`:
-
-| Cta | Conta | No período | Por que reconsiderar |
-|---|---|---|---|
-| 510 | Diárias | R$ 167.884 | Inclui os **carretos** pagos a terceiros, que são frete |
-| 1860 | Prestação de serviço continuado - PJ | R$ 64.400 | Terceirizado, não é folha |
-| 530 | EPIs/Uniformes | R$ 157 | Equipamento de segurança |
-| 1770 | EPC - Equipamento de proteção coletiva | R$ 1.216 | Equipamento de segurança |
-
-Exemplo, para trazer diárias e o serviço PJ de volta:
-
-```python
-CONTAS_MANTIDAS = {510, 1860}
-```
-
-Depois rode `python atualizar.py` de novo. Ele imprime quanto ficou de fora, e a
-aba **Alertas** mostra, mês a mês, quanto do arquivo original é operacional e
-quanto é pessoal.
+Marcar o **grupo** inteiro é de propósito: se o ERP criar uma conta de benefício
+nova, ela já entra na marcação sozinha.
 
 ---
 
-## Como os dados se ligam
+## Baixar o Excel
 
-A chave é o código da conta: o que o orçamento chama de **`CONTA`** é o mesmo que
-o relatório do ERP chama de **`Reduzida`** (layout antigo) ou **`Cta`** (layout
-novo). As 93 contas que aparecem nos relatórios existem todas no orçamento.
-
-O escopo comparável é a subárvore do grupo **260 CUSTOS E DESPESAS**, com sete
-grupos: custos diretos (monetário e não monetário), pessoal, serviços, materiais,
-financeiras e tributárias.
-
-Alguns detalhes que valem saber ao ler os números:
-
-- **Mês sem planilha não é zero.** Os meses ainda não fechados (ago a dez)
-  aparecem como *sem dados*, hachurados, em todo gráfico e tabela. Uma linha de
-  tendência que passasse por zero neles estaria mentindo.
-- **Despesa é positiva; estorno é negativo.** O ERP marca débito com `-` no fim
-  do valor (`1.664.797,04-`). Estornos entram negativos e se cancelam com o
-  débito, como devem.
-- **A conta 290 (aluguel de máquinas próprias) é rateio interno, não caixa.**
-  Por padrão ela entra nos totais, porque é assim que o relatório do ERP fecha.
-  Desmarque *Incluir não monetário* para ver só o desembolso real.
-- **Dois layouts de relatório.** O ERP mudou o formato entre junho e julho
-  (`FFOR001.GER` até junho → `FFOR401.GER` em julho): mudaram as colunas e os números deixaram de
-  ser texto. Os dois são lidos automaticamente; a coluna *Layout* na aba Alertas
-  mostra qual foi usado em cada mês.
-- **O diesel mede consumo, não compra.** O relatório `SECE214` conta litros
-  retirados do estoque; as contas 380 e 820 contam a compra lançada no
-  financeiro. Os dois não coincidem no mesmo mês, então o custo por litro é
-  indicativo. O aviso no topo da aba Diesel repete isso.
+Botão no topo. Nove abas — Resumo, Resultado mês a mês, Por grupo, Por conta,
+Conta × mês, Onde agir, Fornecedores, Lançamentos e Conferência — em formato pt-BR,
+com cabeçalho fixo e filtro automático. Respeita os filtros da tela, e a aba
+`Resumo` registra qual recorte foi exportado.
 
 ---
 
-## O que o dashboard já mostra (jan–jul/2026, operacional)
+## Detalhes que mudam a leitura dos números
 
-Com os sete meses carregados e sem a folha, o consumo está em **70,5% do
-orçado** — R$ 7,88 mi realizados contra R$ 11,17 mi previstos. A folga é
-aparente: a composição está bem deslocada.
+- **Receita não lançada não é prejuízo.** Maio e junho não têm receita lançada. O
+  ERP imprime `Receita (-) Custo` de −2,2 mi e −2,6 mi nesses meses, tratando
+  receita ausente como zero. O painel mostra *receita não lançada* e **não calcula
+  resultado** ali: contar zero produziria um prejuízo que não existe.
+- **Mês sem relatório não é zero.** Meses sem nenhuma fonte aparecem hachurados
+  e rotulados *sem dados*. Meses que só têm o razão aparecem como *parcial* (ver
+  a seção acima).
+- **`TOTAL ACUMULADO ANO` do PDF acumula desde janeiro**, não desde o início do
+  trimestre. O painel nunca soma essa coluna entre arquivos; usa como conferência.
+- **O orçado vem da planilha, não do PDF.** Conferi 363 células: 361 batem. As 2
+  exceções são a conta 290, cujo nome longo se sobrepõe fisicamente à primeira
+  coluna de valor e entrelaça os caracteres — nenhum recorte separa isso. A aba
+  Dados mostra quantas células conferiram em cada arquivo.
+- **A conta 290 (aluguel de máquinas próprias) é rateio interno, não caixa.** Está
+  nos totais porque é assim que o relatório do ERP fecha.
+- **O diesel do SECE214 mede consumo do estoque**, e o custo correspondente está na
+  conta 380. São a mesma coisa vista de dois ângulos, e não coincidem mês a mês.
 
-| Grupo | Orçado | Realizado | Execução |
+---
+
+## O que os dados mostram hoje (jan–jul/2026)
+
+Nos sete meses, a operação **perdeu R$ 3.442.498,97**: receita de R$ 15,56 mi
+contra custo de R$ 19,00 mi — margem de −22,1%. O previsto para os mesmos meses
+era **positivo em R$ 1.218.562,80**. Fevereiro, abril, junho e julho fecharam no
+vermelho.
+
+**O problema não é faturamento.** A receita realizada ficou R$ 431.751,05 **acima**
+do orçado. O resultado virou porque o custo passou R$ 5.092.812,82 do previsto —
+136,6% da meta. Três contas explicam 80% desse estouro:
+
+| Conta | Orçado jan–jul | Realizado | Excesso |
 |---|---|---|---|
-| Despesas tributárias | R$ 22.463 | R$ 1.476.495 | 6.573% |
-| Despesas de materiais | R$ 1.537.818 | R$ 2.883.932 | 187,5% |
-| Despesas de serviços | R$ 3.873.548 | R$ 3.033.717 | 78,3% |
-| Custos diretos (não monetário) | R$ 2.269.185 | R$ 477.429 | 21,0% |
-| Custos diretos | R$ 3.481.767 | R$ 12.205 | 0,4% |
+| 380 Óleo diesel | R$ 3,48 mi | R$ 6,32 mi | +R$ 2,84 mi |
+| 1200 Peças, acessórios e pneus | R$ 1,51 mi | R$ 4,07 mi | +R$ 2,56 mi |
+| 1440 IPVA / Licenciamento | R$ 0 | R$ 1,45 mi | +R$ 1,45 mi |
 
-Quatro contas concentram quase tudo, e as três primeiras estão na aba
-**Alertas**:
+São R$ 6,84 mi de um estouro total de R$ 8,19 mi, distribuído em 34 contas. O
+custo desta coordenação é essencialmente **rodar e manter frota**, e é aí que o
+desvio está. A aba **Onde agir** lista tudo ordenado pelo excesso em reais.
 
-- **Peças, acessórios e pneus: R$ 2,87 mi realizados contra R$ 1,51 mi
-  orçados** — 190%, R$ 1,35 mi acima. É o maior gasto do centro de custo.
-- **IPVA/Licenciamento: R$ 1,45 mi gastos, R$ 0 orçados.** É o que leva as
-  tributárias a 6.573%.
-- **Óleo diesel (380): R$ 3,48 mi orçados no período, R$ 12 mil realizados.** O
-  diesel real está lançado em **Combustível (820)**, que tem R$ 1,42 mi
-  realizados contra R$ 1,97 mi orçados. Combustível está orçado em duas contas e
-  realizado em uma só — vale alinhar a classificação do orçamento com a do ERP.
-- **Manutenção de máquinas e veículos: R$ 1,07 mi** contra R$ 1,51 mi orçados.
+Julho é o pior mês corrido: **−R$ 773.135,73**, com a menor receita dos sete
+(R$ 2,05 mi) e o segundo maior custo (R$ 2,82 mi).
 
-Junto com peças e pneus, manutenção e combustível somam **R$ 5,36 mi**, ou 68%
-do gasto operacional do período: o custo desta coordenação é essencialmente
-**rodar e manter frota**.
-
-A **projeção de fechamento** (realizado até julho + orçado de ago a dez) dá
-**R$ 16,0 mi**.
-
-Sobre o **custo por litro**: com junho e julho tendo litros e financeiro ao mesmo
-tempo, o cálculo sai em R$ 1,23/L e R$ 1,81/L. Isso é bem abaixo do preço de
-mercado do diesel, o que reforça o aviso da aba: o `SECE214` conta litros
-retirados do estoque e as contas 380/820 contam a compra lançada no financeiro —
-os dois não medem a mesma coisa no mesmo mês. Antes de usar esse número como
-preço, vale conferir com a contabilidade se todo o combustível consumido pela
-logística é lançado nessas duas contas.
+---
 
 ## Estrutura
 
@@ -238,15 +302,25 @@ css/estilo.css          paleta e componentes
 js/dados.js             gerado por atualizar.py — não edite à mão
 js/graficos.js          gráficos em SVG
 js/app.js               estado, filtros, agregações e tabelas
-js/leitor.js            leitura de .xlsx no navegador
-js/xlsx.js              escrita do .xlsx do export + montagem das abas
+js/leitor.js            leitura de .xlsx de razão no navegador
+js/xlsx.js              escrita do Excel + montagem das abas
 atualizar.py            planilhas/ -> js/dados.js
-leitores/               parsers: xlsx, xls (BIFF8), inversão, orçamento, diesel
-planilhas/              onde ficam os arquivos do ERP
+leitores/               analise_custos (PDF), orcamento (.xls), inversao, diesel, xlsx_raw, xls_biff
+planilhas/              analise/ orcamento/ inversoes/ diesel/
 ```
 
-Requisitos: **Python 3.9+** para o script (nenhum pacote extra) e um navegador
-atual para a página — o upload de `.xlsx` e o export usam
-`DecompressionStream`/`CompressionStream`, disponíveis no Chrome, Edge, Firefox
-e Safari recentes. Sem eles a página continua funcionando; só o upload no
-navegador fica indisponível, e aí o caminho é o `atualizar.py`.
+Requisitos: **Python 3.9+** com `pdfplumber`, e um navegador atual.
+
+### Publicar
+
+```bash
+git add -A && git commit -m "painel de resultado" && git push
+```
+
+No GitHub: **Settings → Pages → Source: branch `main`, pasta `/ (root)`**.
+
+Repositório público deixa os dados financeiros do centro de custo legíveis por
+qualquer um, e o GitHub mantém cache de commits mesmo depois de apagados. Para uso
+interno, deixe privado — Pages privado exige plano pago; a alternativa é
+`python atualizar.py --bundle`, que gera `dashboard-completo.html`, um arquivo só,
+sem dependência externa, que abre por duplo clique.
