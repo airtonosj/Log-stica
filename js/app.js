@@ -646,7 +646,11 @@ function renderResultado(v) {
       categorias: rotulos,
       valores: v.serie.map(s => s.resultado),
       semDados: v.serie.map(s => !s.temDados || s.semReceita),
-      cor: G.cor.serie(1),
+      // resultado: o lado ruim é o negativo (faltou), ao contrário de um desvio
+      // de custo, em que o lado ruim é o positivo
+      sinalRuim: -1,
+      rotuloBom: 'sobrou no mês',
+      rotuloRuim: 'faltou no mês',
       nomeSerie: 'Resultado',
       formatarValor: fmt.curta,
       formatarDica: x => comSinal(x),

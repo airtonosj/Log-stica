@@ -600,8 +600,14 @@ function colunas(alvo, cfg) {
   const hachura = defHachura(q.svg, novoId('hachura'));
 
   const validos = valores.filter(v => v !== null && v !== undefined && isFinite(v));
-  const topo = Math.max(meta || 0, ...(validos.length ? validos : [1]));
-  const { min, max, marcas } = marcasRedondas(0, topo || 1, 5);
+  // O domínio TEM de conter os negativos. Começava fixo em zero, e aí um mês no
+  // vermelho desenhava uma barra fora da escala: fevereiro, com -R$ 2,24 mi
+  // contra um teto de 800 mil, atravessava a moldura, o eixo x, a legenda e o
+  // cartão inteiro. Math.min(0, ...) mantém o zero como base nos gráficos que
+  // só têm valores positivos, então nada muda para eles.
+  const piso = Math.min(0, ...(validos.length ? validos : [0]));
+  const topo = Math.max(0, meta || 0, ...(validos.length ? validos : [1]));
+  const { min, max, marcas } = marcasRedondas(piso, topo || 1, 5);
   const y = escalaLinear([min, max], [q.m.cima + q.a, q.m.cima]);
   eixoY(q, y, marcas, formatarValor);
 
@@ -610,14 +616,35 @@ function colunas(alvo, cfg) {
   const largura = Math.min(faixa - VAO * 2, BARRA_MAX);
   const base = q.m.cima + q.a;
   const corFinal = corBarra || cor.serie(0);
+
+  // Numa medida que cruza o zero, a cor reforça o juízo que a posição já dá.
+  // `sinalRuim` diz QUAL lado é o ruim, porque isso muda com a medida: num
+  // resultado o negativo é o lado ruim; num desvio de custo é o positivo. Sem
+  // esse parâmetro o gráfico fica de uma cor só, como os de valor sempre
+  // positivo. Frio/quente em vez de verde/vermelho: a posição em relação ao
+  // zero já é inequívoca, e o par azul-vermelho se lê com daltonismo.
+  const divergente = cfg.sinalRuim === 1 || cfg.sinalRuim === -1;
+  const corDoValor = v => {
+    if (!divergente) return corFinal;
+    if (!v) return cor.frio();
+    return Math.sign(v) === cfg.sinalRuim ? cor.quente() : cor.frio();
+  };
+
   // dado parcial ganha textura na própria cor: a barra continua legível e a
   // trama avisa que o valor não é comparável com os outros meses
-  const hachuraParcial = parcial.some(Boolean)
-    ? defHachuraDaSerie(q.svg, novoId('parcial-col'), corFinal) : null;
+  const hachuras = new Map();
+  const hachuraDaCor = c => {
+    if (!hachuras.has(c)) {
+      hachuras.set(c, defHachuraDaSerie(q.svg, novoId('parcial-col'), c));
+    }
+    return hachuras.get(c);
+  };
 
-  // maior valor recebe rótulo direto; os demais ficam no eixo e na dica
+  // rótulo direto vai no de maior MAGNITUDE, não no maior valor com sinal: o mês
+  // mais notável do ano é o pior, e ele é negativo
   const iMaior = valores.reduce((melhor, v, i) =>
-    (v !== null && v !== undefined && (melhor < 0 || v > valores[melhor])) ? i : melhor, -1);
+    (v !== null && v !== undefined && isFinite(v)
+     && (melhor < 0 || Math.abs(v) > Math.abs(valores[melhor]))) ? i : melhor, -1);
 
   categorias.forEach((rotulo, i) => {
     const g = el('g', {}, q.svg);
@@ -637,10 +664,11 @@ function colunas(alvo, cfg) {
     }
 
     const h = extensaoVisivel(Math.abs(y(v) - y(0)), v);
+    const c = corDoValor(v);
     el('path', {
       d: caminhoBarra(x, y(Math.max(v, 0)), largura, h, v < 0 ? 'baixo' : 'cima'),
-      fill: parcial[i] && hachuraParcial ? hachuraParcial : corFinal,
-      stroke: parcial[i] ? corFinal : null,
+      fill: parcial[i] ? hachuraDaCor(c) : c,
+      stroke: parcial[i] ? c : null,
       'stroke-width': parcial[i] ? 1 : null,
       class: 'g-marca',
     }, g);
@@ -649,11 +677,15 @@ function colunas(alvo, cfg) {
       x: x - VAO, y: q.m.cima, width: largura + VAO * 2, height: q.a, fill: 'transparent',
     }, g);
     if (rotularTodas || i === iMaior) {
-      texto(g, centro(i), y(v) - 6, formatarDica(v), 'g-valor', { 'text-anchor': 'middle' });
+      // fora da ponta do dado: acima quando a barra sobe, abaixo quando desce.
+      // Sem isso o rótulo da barra negativa cai dentro dela.
+      const yr = v < 0 ? Math.min(base - 4, y(v) + 14)
+                       : Math.max(q.m.cima + 10, y(v) - 6);
+      texto(g, centro(i), yr, formatarDica(v), 'g-valor', { 'text-anchor': 'middle' });
     }
     ligarDica(g, {
       titulo: cfg.tituloDica ? cfg.tituloDica(i) : rotulo,
-      linhas: [{ cor: corFinal, serie: cfg.nomeSerie || '', valor: formatarDica(v) }],
+      linhas: [{ cor: c, serie: cfg.nomeSerie || '', valor: formatarDica(v) }],
       notas: cfg.notasDica ? cfg.notasDica(i) : null,
     }, `${rotulo}: ${formatarDica(v)}`);
   });
@@ -668,6 +700,10 @@ function colunas(alvo, cfg) {
 
   eixoXCategorias(q, categorias, centro);
   const itensLegenda = [];
+  if (divergente) {
+    itensLegenda.push({ cor: cor.frio(), rotulo: cfg.rotuloBom || 'acima de zero' },
+                      { cor: cor.quente(), rotulo: cfg.rotuloRuim || 'abaixo de zero' });
+  }
   if (semDados.some(Boolean) || valores.some(v => v === null || v === undefined)) {
     itensLegenda.push({ forma: 'hachura', rotulo: 'Sem relatório' });
   }
