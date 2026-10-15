@@ -7,22 +7,26 @@ de origem.
 Versão navegável, para compartilhar:
 <https://claude.ai/code/artifact/9d744066-d633-485d-b748-37c864c77f00>
 
-> **Atualizado com o relatório `05 a 07`.** Ele trouxe julho e, sem estar no
-> pedido, a receita realizada de maio e junho — os dois meses que estavam em
-> branco. Agora **os sete meses têm custo e receita**, e o painel calcula
-> resultado em todos. Quatro pendências caíram; três apareceram.
+> **Atualizado com o relatório `07 a 09`.** Ele trouxe agosto e setembro e, sem
+> estar no pedido, **refez julho**: a receita do mês caiu R$ 551.949,85. Agora
+> são **nove meses de custo e oito de receita** — setembro ainda não tem receita
+> lançada, então ele entra no custo e fica fora do resultado. Duas pendências
+> novas apareceram, as duas do lado do ERP.
 
 | | |
 |---|---|
-| Resultado jan–jul | **−R$ 3.442.498,97** — era para ser +R$ 1.218.562,80 |
-| Receita | **acima** do orçado em R$ 431.751,05 — R$ 15.559.649,54 |
-| Custo | **acima** do orçado em R$ 5.092.812,82 — R$ 19.002.148,51 (136,6%) |
-| Meses no vermelho | **4 de 7** — fevereiro, abril, junho, julho |
-| Concentração do estouro | **3 contas** explicam 80% dele, de 34 estouradas |
+| Resultado jan–ago | **−R$ 4.199.984,94** — era para ser +R$ 1.469.999,42 |
+| Receita jan–ago | **abaixo** do orçado em R$ 517.788,77 — R$ 17.323.714,86 |
+| Custo jan–ago | **acima** do orçado em R$ 5.152.195,59 — R$ 21.523.699,80 (131,5%) |
+| Custo jan–set | R$ 23.979.247,37 contra R$ 18.818.829,45 orçados (127,4%) |
+| Meses no vermelho | **5 de 8** — fevereiro, abril, junho, julho, agosto |
+| Concentração do estouro | **3 contas** explicam 83,6% dele, de 33 estouradas |
 
-O ponto que o painel deixa evidente: **o problema não é faturamento.** A receita
-bateu o orçado. O resultado virou porque o custo passou R$ 5,09 mi do previsto, e
-quase toda essa diferença está em três contas.
+O ponto que o painel deixa evidente: **o problema é custo.** A receita de jan–ago
+ficou R$ 517.788,77 abaixo do orçado, e ficou só por causa da revisão de julho
+(`ERP-3`) — até o relatório anterior ela estava acima. O custo passou
+R$ 5,15 mi do previsto, dez vezes a falta de receita, e quase toda essa
+diferença continua em três contas.
 
 ---
 
@@ -32,25 +36,26 @@ O código diz onde consertar: `FC` nas planilhas de frete carrada, `ERP` no
 sistema, `ORC` no orçamento aprovado, `PDF` no relatório de análise de custos,
 `REC` na conciliação da receita.
 
-### ORC-1 · Três contas explicam 80% do estouro — *aberto*
+### ORC-1 · Três contas explicam 84% do estouro — *aberto*
 
-| Conta | Orçado jan–jul | Realizado | Excesso |
+| Conta | Orçado jan–set | Realizado | Excesso |
 |---|---|---|---|
-| 380 Óleo diesel | 3.479.416,66 | 6.318.391,29 | **+2.838.974,63** |
-| 1200 Peças, acessórios e pneus | 1.512.789,85 | 4.072.783,35 | **+2.559.993,50** |
-| 1440 IPVA / Licenciamento | 0,00 | 1.445.605,02 | **+1.445.605,02** |
-| | | | **6.844.573,15 de 8.187.589,65** |
+| 380 Óleo diesel | 4.727.675,02 | 8.273.061,07 | **+3.545.386,05** |
+| 1200 Peças, acessórios e pneus | 2.055.510,87 | 5.206.274,55 | **+3.150.763,68** |
+| 1440 IPVA / Licenciamento | 0,00 | 1.454.717,28 | **+1.454.717,28** |
+| | | | **8.150.867,01 de 9.746.990,91** |
 
 É a lista mais curta possível para um plano de ação: três contas, 83,6% do
-estouro. Diesel e peças são consumo de frota; IPVA é o caso do `ORC-2`.
+estouro — a mesma proporção de dois meses atrás, com R$ 1,3 mi a mais dentro
+dela. Diesel e peças são consumo de frota; IPVA é o caso do `ORC-2`.
 
-**O grupo inteiro de materiais está em 266,6%** (orçado R$ 1,54 mi, realizado
-R$ 4,10 mi) e o de custos diretos em 183,2%.
+**O grupo inteiro de materiais está em 251,1%** (orçado R$ 2,09 mi, realizado
+R$ 5,24 mi) e o de custos diretos em 176,6%.
 
 ### ORC-2 · IPVA e licenciamento: R$ 1,45 mi gastos, zero orçado — *aberto*
 
-A conta 1440 não tem nenhum valor previsto no ano e realizou R$ 1.445.605,02 em
-jan–jul. Como o orçado é zero, o grupo Despesas tributárias aparece com **6.658%
+A conta 1440 não tem nenhum valor previsto no ano e realizou R$ 1.454.717,28 em
+jan–set. Como o orçado é zero, o grupo Despesas tributárias aparece com **5.205%
 de execução** e a comparação do grupo perde qualquer sentido.
 
 **Decisão que falta:** ou o IPVA entra no orçamento do centro de custo, ou ele
@@ -60,19 +65,18 @@ ele, porque não havia meta.
 
 ### ORC-3 · Diesel estoura enquanto combustível sobra — *aberto*
 
-| Conta | Orçado jan–jul | Realizado | Desvio |
+| Conta | Orçado jan–set | Realizado | Desvio |
 |---|---|---|---|
-| 380 Óleo diesel | 3.479.416,66 | 6.318.391,29 | +2.838.974,63 |
-| 820 Combustível | 1.966.626,79 | 1.662.839,78 | −303.787,01 |
+| 380 Óleo diesel | 4.727.675,02 | 8.273.061,07 | +3.545.386,05 |
+| 820 Combustível | 2.672.164,13 | 2.071.676,28 | −600.487,85 |
 
 O diesel passa muito do previsto enquanto o combustível geral fica abaixo. Isso
 sugere que a divisão entre as duas contas no orçamento não corresponde à forma
-como o ERP classifica o lançamento — mas, diferente do que parecia com seis
-meses, **a soma também estoura**: R$ 5.446.043,45 orçados contra
-R$ 7.981.231,07 realizados, R$ 2,54 mi acima. Rever a divisão explica parte do
-desvio por conta; não explica o desvio total.
+como o ERP classifica o lançamento — mas **a soma também estoura**:
+R$ 7.399.839,15 orçados contra R$ 10.344.737,35 realizados, R$ 2,94 mi acima.
+Rever a divisão explica parte do desvio por conta; não explica o desvio total.
 
-### ERP-1 · Junho mudou de valor entre dois relatórios — *contornado* · novo
+### ERP-1 · Junho mudou de valor entre dois relatórios — *contornado*
 
 O mesmo mês, dois relatórios, dois números:
 
@@ -84,13 +88,60 @@ O mesmo mês, dois relatórios, dois números:
 
 Não é erro do ERP: ele lança retroativo, então o relatório mais novo traz o mês
 mais completo. O painel usa o de **período mais recente**, e a prova de que essa
-é a escolha certa é o acumulado impresso: jan–jul fecha em R$ 19.002.148,51 com
-o junho novo, e não fecha com o antigo.
+é a escolha certa foi o acumulado impresso: em agosto, jan–jul fechava em
+R$ 19.002.148,51 com o junho novo, e não fechava com o antigo.
 
 **Por que fica registrado:** um número já divulgado mudou. Se alguém tem um
 relatório de junho impresso antes de agosto, ele está R$ 4.120,42 defasado.
 
-### REC-1 · Janeiro: R$ 223.421,39 rodados e não faturados — *aberto* · novo
+Esse mesmo teste **deixou de fechar** com o relatório de outubro — é o `ERP-4`.
+
+### ERP-3 · Julho perdeu R$ 551.949,85 de receita — *contornado* · novo
+
+Aconteceu de novo, e desta vez para baixo — e com a receita, não com o custo:
+
+| julho | relatório `05 a 07` | relatório `07 a 09` | diferença |
+|---|---|---|---|
+| custo | 2.820.672,13 | 2.820.672,13 | **0,00** |
+| receita | 2.047.536,40 | **1.495.586,55** | **−551.949,85** |
+| resultado | −773.135,73 | **−1.325.085,58** | −551.949,85 |
+
+O custo de julho não mudou **em nenhuma das 62 contas** — só a receita. Pela
+mesma regra do `ERP-1`, vale o relatório de período mais recente, e o acumulado
+de receita impresso (R$ 17.323.714,86) fecha ao centavo com a soma dos meses
+usando o julho novo. Ou seja: a revisão é do ERP e está consistente.
+
+**Por que fica registrado:** é a diferença entre julho fechar em −R$ 773 mil ou
+em −R$ 1,33 mi, e é o único motivo de a receita de jan–ago aparecer abaixo do
+orçado. Vale entender o que foi estornado ou reclassificado — pode ser
+faturamento que mudou de mês, e aí ele reaparece em setembro ou outubro.
+
+### ERP-4 · O acumulado não fecha por R$ 2.060,21 — *aberto* · novo
+
+O relatório imprime um `TOTAL ACUMULADO ANO` que acumula desde janeiro,
+inclusive os meses que ele não mostra. É a única conferência que enxerga o
+passado, e agora ela acusa:
+
+| jan–set | valor |
+|---|---|
+| custo impresso no relatório `07 a 09` | 23.977.187,16 |
+| soma dos nove meses guardados no painel | **23.979.247,37** |
+| diferença | **2.060,21** |
+
+Julho, agosto e setembro vêm desse mesmo relatório, então não é ali. **Algum mês
+entre janeiro e junho encolheu R$ 2.060,21 no ERP depois que o relatório daquele
+mês saiu** — e o relatório novo não mostra as colunas desses meses, então não dá
+para saber qual.
+
+A receita, no mesmo teste, fecha ao centavo. O valor é pequeno (0,009% do custo)
+e não muda nenhuma conclusão, mas é a prova de que os meses antigos continuam se
+mexendo.
+
+**O que resolve:** um `FFOR501` cobrindo jan–jun tirado hoje. O painel aceita
+relatórios sobrepostos — o mais recente vence, e `python atualizar.py` mostra na
+hora o que mudou de valor.
+
+### REC-1 · Janeiro: R$ 223.421,39 rodados e não faturados — *aberto*
 
 Você decidiu que em janeiro vale o **detalhe** da planilha de frete carrada
 (R$ 1.308.362,10) e não o resumo (R$ 1.084.940,71). O painel já trabalha assim.
@@ -119,7 +170,7 @@ mês certo é o do nome da aba, e o painel trabalha assim (constante
 **Por que ainda está aqui:** a correção vive no código do painel, não na
 planilha. Quem abrir o arquivo continua vendo as datas erradas.
 
-### FC-2 · O resumo de julho somou uma obra dentro da outra — *contornado* · novo
+### FC-2 · O resumo de julho somou uma obra dentro da outra — *contornado*
 
 No `RESUMO FRETE CARRADAS JUL-26`, `DUERE-TO` não aparece e `PALMEIROPOLIS-TO`
 aparece com R$ 148.851,36. No detalhe, as duas estão separadas:
@@ -152,9 +203,9 @@ e o óleo diesel é baixa de estoque — nunca vira nota.
 
 | Conta | Análise de custos | Razão |
 |---|---|---|
-| 380 Óleo diesel | 6.318.391,29 | **0,00** |
-| 1200 Peças e pneus | 4.072.783,35 | 2.867.379,00 |
-| **Custo total jan–jul** | **19.002.148,51** | **10.789.446,65** |
+| 380 Óleo diesel | 8.273.061,07 | **0,00** |
+| 1200 Peças e pneus | 5.206.274,55 | 3.670.245,38 |
+| **Custo total jan–set** | **23.979.247,37** | **13.566.199,59** |
 
 **Consequência:** o painel usa a análise de custos para todo valor, e o razão só
 para saber quem recebeu. A aba Fornecedores cobre 57% do custo e avisa isso no
@@ -163,8 +214,12 @@ topo — ela não fecha com as outras, e não deve.
 ### PDF-1 · Uma célula de orçado por PDF não sai do arquivo — *contornado*
 
 O nome da conta 290 é longo o bastante para se sobrepor à primeira coluna de
-valor, e os caracteres se entrelaçam. São 3 células em 549 (uma em cada PDF:
-janeiro, abril, maio); todas as outras conferem exatamente com a planilha.
+valor, e os caracteres se entrelaçam. São 4 células em 735 (uma em cada PDF:
+janeiro, abril, maio, julho); todas as outras conferem exatamente com a planilha.
+
+O relatório `07 a 09` veio também em `.xlsx`, e lá a célula sai limpa:
+R$ 401.702,66, igual à planilha. O arquivo está em `planilhas/analise/` ao lado
+do PDF — o leitor usa o PDF, o xlsx fica como conferência.
 
 **Como está resolvido:** o orçado vem sempre da planilha, e o PDF serve de
 conferência. A aba Dados mostra quantas células conferiram em cada arquivo.
@@ -173,38 +228,51 @@ conferência. A aba Dados mostra quantas células conferiram em cada arquivo.
 
 ## Parte 2 — O que ainda falta coletar
 
-A lista encurtou. Nada aqui bloqueia mais o resultado — a receita e o custo dos
-sete meses estão completos. O que falta é a **composição** da receita: saber
+Um item saiu (julho ficou quase fechado) e dois entraram com agosto e setembro.
+Só o primeiro bloqueia número de resultado; o resto é **composição** da receita —
 quanto de cada mês veio de frete carrada e quanto veio do outro serviço.
 
-1. **O frete (não carrada) de abril, junho e julho.** Agora que a receita do ERP
-   é conhecida, o valor que falta em cada mês é uma subtração, não um chute:
+1. **A receita de setembro.** O ERP traz o mês com custo (R$ 2.455.547,57) e com
+   a receita **em branco**. O painel não inventa zero: setembro entra no custo e
+   fica fora do resultado, da margem e da contagem de meses no vermelho. É a
+   única coisa que falta para o trimestre fechar. Pode ser que ela entre sozinha
+   no próximo `FFOR501` — foi o que aconteceu com maio e junho.
+
+2. **O frete (não carrada) de abril, junho e julho.** Com a receita do ERP
+   conhecida, o valor que falta em cada mês é uma subtração, não um chute:
 
    | Mês | Receita do ERP | − frete carrada | = frete que falta |
    |---|---|---|---|
    | abril | 2.357.981,15 | 1.378.218,13 | **979.763,02** |
    | junho | 2.385.093,92 | 1.604.128,61 | **780.965,31** |
-   | julho | 2.047.536,40 | 1.338.285,95 | **709.250,45** |
+   | julho | 1.495.586,55 | 1.338.285,95 | **157.300,60** |
 
-   Os três valores enviados que ainda não têm mês são R$ 994.097,85 ·
-   R$ 659.741,89 · R$ 775.475,91, e **nenhum fecha nenhum desses meses**: o mais
-   próximo é 775.475,91 contra os 780.965,31 de junho, e erra por R$ 5.489,40.
-   Em janeiro, fevereiro e março o encaixe foi de 1 a 2 centavos, então essa
-   diferença não é arredondamento — ou falta dado, ou esses três valores são de
-   outros meses. Preencher em `planilhas/frete/faturamento-frete.csv`.
+   Julho mudou muito aqui: com a receita revista (`ERP-3`), o frete que falta caiu
+   de R$ 709.250,45 para R$ 157.300,60. Os três valores enviados que ainda não
+   têm mês são R$ 994.097,85 · R$ 659.741,89 · R$ 775.475,91, e **nenhum fecha
+   nenhum desses meses**: o mais próximo é 775.475,91 contra os 780.965,31 de
+   junho, e erra por R$ 5.489,40. Em janeiro, fevereiro e março o encaixe foi de
+   1 a 2 centavos, então essa diferença não é arredondamento — ou falta dado, ou
+   esses três valores são de outros meses. Preencher em
+   `planilhas/frete/faturamento-frete.csv`.
 
-2. **O frete carrada de maio.** Não existe em nenhuma aba — a planilha do mês
-   nunca foi feita. Sem ela, maio é o único mês em que não dá para separar a
-   receita em duas parcelas de jeito nenhum.
+3. **O frete carrada de maio, agosto e setembro.** Maio não existe em nenhuma
+   aba — a planilha do mês nunca foi feita. Agosto e setembro são novos: a última
+   planilha enviada vai até julho. Sem elas, esses três meses não têm como
+   separar a receita em duas parcelas.
 
-3. **Confirmar se `TUCUMA DUERE` é a mesma obra que `DUERE-TO`.** É a única
+4. **Confirmar se `TUCUMA DUERE` é a mesma obra que `DUERE-TO`.** É a única
    união da normalização que não tem prova de valor (ver Parte 3). Se forem
    obras diferentes, some a linha `TUCUMADUERE` de `OBRAS_NORMALIZADAS` em
    `leitores/frete_carrada.py` e os R$ 62.005,29 de janeiro se separam de novo.
 
-4. **Agosto em diante.** O relatório `FFOR501` de agosto, quando sair, entra sem
-   ajuste de código: salvar em `planilhas/analise/` e rodar
-   `python atualizar.py`.
+5. **Um `FFOR501` de jan–jun tirado hoje**, para localizar os R$ 2.060,21 do
+   `ERP-4`.
+
+6. **Outubro em diante.** O relatório `FFOR501` do próximo trimestre entra sem
+   ajuste de código: salvar em `planilhas/analise/` e rodar `python atualizar.py`.
+   O razão (`detalhado.xlsx`) também pode vir trimestral — o painel resolve a
+   sobreposição sozinho e avisa o que mudou.
 
 ---
 
@@ -252,23 +320,29 @@ R$ 2.386.015,65 e R$ 2.385.093,92. Maio deu **lucro** de R$ 159.483,91.
 
 Antes julho entrava marcado como parcial, com R$ 1.544.364,43 vindos só do
 razão — sem diesel e sem receita. Agora tem custo de R$ 2.820.672,13 e receita
-de R$ 2.047.536,40, e é o **pior mês corrido do ano**: −R$ 773.135,73, com a
-menor receita dos sete meses.
+de R$ 1.495.586,55, depois da revisão do `ERP-3`. É o **segundo pior mês do
+ano** (−R$ 1.325.085,58, atrás só de fevereiro) e o de **menor receita**.
 
 ---
 
 ## Conferência
 
-- **Conciliação:** nos três PDFs, a soma das contas é igual ao rodapé
-  `Custo Total Edeconsil`, com diferença de **R$ 0,00 em todos os meses**.
-- **Acumulado:** a soma dos sete meses fecha ao centavo com o
-  `TOTAL ACUMULADO ANO` impresso — custo R$ 19.002.148,51, receita
-  R$ 15.559.649,54.
-- **Mês a mês:** as 21 células de custo, receita e resultado do painel conferem
-  com o rodapé impresso, uma por uma.
-- **Orçado:** 546 das 549 células conferem exatamente com a planilha do programa
-  orçamentário (176 + 185 + 185); as 3 restantes são o caso `PDF-1`.
+- **Conciliação:** nos quatro PDFs, a soma das contas é igual ao rodapé
+  `Custo Total Edeconsil`, com diferença de **R$ 0,00 nos 12 meses-relatório**.
+- **PDF x xlsx:** o relatório `07 a 09` veio nos dois formatos. As **186 células
+  de realizado** (62 contas × 3 meses) batem **exatamente**, uma por uma. A única
+  diferença é a célula de orçado do `PDF-1`.
+- **Acumulado:** a receita fecha ao centavo com o `TOTAL ACUMULADO ANO` impresso
+  (R$ 17.323.714,86). O custo **não fecha por R$ 2.060,21** — é o `ERP-4`.
+- **Mês a mês:** as 25 células de custo (9), receita (8) e resultado (8) do
+  painel conferem com o rodapé impresso, uma por uma.
+- **Razão:** os 9.946 lançamentos conciliam com o total de cada arquivo, e julho
+  aparece uma vez só — o arquivo trimestral substitui o mensal (`ERP-3` tem a
+  mesma lógica do lado do custo: R$ 1.544.364,43 → R$ 1.659.560,44, o INSS do mês
+  lançado depois).
+- **Orçado:** 731 das 735 células conferem exatamente com a planilha do programa
+  orçamentário (176 + 185 + 185 + 185); as 4 restantes são o caso `PDF-1`.
 
-Fontes: análise de custos `FFOR501` (jan–jul, 3 relatórios) · programa
-orçamentário `F.AP.05` · razão `FFOR001/FFOR401` (jan–jul) · frete carrada
+Fontes: análise de custos `FFOR501` (jan–set, 4 relatórios) · programa
+orçamentário `F.AP.05` · razão `FFOR001/FFOR401` (jan–set) · frete carrada
 (jan–abr, jun–jul) · consumo de diesel `SECE214`.

@@ -19,6 +19,11 @@ lançamentos, delta R$ 0,00):
     texto procurado.
   * Sinal preservado: débito = despesa positiva; crédito/estorno = negativa.
     Usar valor absoluto faz estornos somarem em vez de cancelar.
+
+O arquivo NEM SEMPRE É DE UM MÊS SÓ. O de set/2026 cobre 01/07 a 30/09 e traz
+lançamento dos três meses, então `mes` (o mês de início) não serve para separar
+nada: quem sabe o mês de um lançamento é a data DELE. Daí `meses` (todos os
+meses do período) e `mes` dentro de cada lançamento.
 """
 import re
 
@@ -92,6 +97,22 @@ def _periodo(aba, col):
             return (xlsx_raw.serial_para_data(min(seriais)),
                     xlsx_raw.serial_para_data(max(seriais)))
     return None, None
+
+
+def _meses_do_periodo(inicio, fim):
+    """[7, 8, 9] para 01/07 a 30/09. Um mês só na maioria dos arquivos."""
+    meses, ano, mes = [], inicio.year, inicio.month
+    while (ano, mes) <= (fim.year, fim.month):
+        meses.append(mes)
+        ano, mes = (ano + 1, 1) if mes == 12 else (ano, mes + 1)
+    return meses
+
+
+def _mes_do_lancamento(data, padrao):
+    """Mês da data do lançamento; o do relatório se a data não for legível."""
+    if len(data) >= 7 and data[5:7].isdigit():
+        return int(data[5:7])
+    return padrao
 
 
 def _centro_de_custo(aba, col):
@@ -183,8 +204,9 @@ def ler(caminho):
             if conta_atual is None:
                 continue
             partes = _partes_do_lancamento(nome)
-            partes.update(cta=conta_atual,
-                          data=_data_do_lancamento(classificacao, inicio.year),
+            data = _data_do_lancamento(classificacao, inicio.year)
+            partes.update(cta=conta_atual, data=data,
+                          mes=_mes_do_lancamento(data, inicio.month),
                           valor=round(valor(linha.get(col['realizado'])), 2))
             lancamentos.append(partes)
         elif CLASSIFICACAO.match(classificacao):
@@ -210,6 +232,7 @@ def ler(caminho):
         'inicio': inicio.isoformat(),
         'fim': fim.isoformat(),
         'mes': inicio.month,
+        'meses': _meses_do_periodo(inicio, fim),
         'ano': inicio.year,
         'totalRealizado': total_cc if total_cc is not None else 0.0,
         'totalOrcado': orcado_cc,

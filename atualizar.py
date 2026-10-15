@@ -18,6 +18,9 @@ Fontes, em ordem de autoridade:
     planilhas/inversoes/*.xlsx   FFOR001/FFOR401 — o razão. SECUNDÁRIA: só serve
                                  para saber QUEM recebeu (fornecedor, documento).
                                  Cobre ~54% do custo, então não entra nos KPIs.
+                                 Também pode vir trimestral e se sobrepor ao
+                                 arquivo mensal do mesmo mês; vale a mesma regra
+                                 do PDF, ganha o de período mais recente.
     planilhas/diesel/*.xlsx      SECE214 — litros consumidos.
     planilhas/frete/*.xlsx       FRETE CARRADA — faturamento de frete por obra,
                                  pelas abas de RESUMO. É uma PARTE da receita de
@@ -155,6 +158,13 @@ def ler_analises(pasta, orcado_por_conta):
 
 
 def ler_razao(pasta):
+    """Lê o razão. Ordena pelo FIM do período, como os PDFs e pelo mesmo motivo.
+
+    O arquivo de jul–set repete julho, que já tinha arquivo próprio, e repete
+    com outro número: R$ 1.659.560,44 contra 1.544.364,43, porque o INSS de
+    julho (110.958,33) só foi lançado depois. Ordenado assim, o último a passar
+    por um mês é o dono dele.
+    """
     resultados, problemas = [], []
     for caminho in arquivos(pasta, 'inversoes', ('.xlsx',)):
         try:
@@ -165,7 +175,7 @@ def ler_razao(pasta):
         r['arquivo'] = caminho.name
         r['conciliacao'] = inversao.conciliar(r)
         resultados.append(r)
-    resultados.sort(key=lambda r: r['mes'])
+    resultados.sort(key=lambda r: (r['fim'], r['inicio']))
     return resultados, problemas
 
 
@@ -261,6 +271,39 @@ def ler_diesel(pasta):
 
 
 # --------------------------------------------------------------- montagem
+def lancamentos_do_mes(relatorio, mes):
+    """Lançamentos daquele mês dentro do relatório.
+
+    Num arquivo de um mês só devolve todos, inclusive um com data fora do
+    período: perder lançamento por data digitada errada furaria o detalhe de
+    fornecedor em silêncio. Num trimestral, só a data separa os meses.
+    """
+    if len(relatorio['meses']) == 1:
+        return relatorio['lancamentos']
+    return [l for l in relatorio['lancamentos'] if l['mes'] == mes]
+
+
+def realizado_por_conta(relatorio, mes):
+    """Realizado por conta naquele mês.
+
+    Num arquivo de um mês só sai das CONTAS, que é o número impresso. Num
+    trimestral a conta traz o período inteiro e só os lançamentos sabem separar
+    o mês — o que fecha porque a conciliação exige conta == lançamentos.
+    """
+    soma = {}
+    if len(relatorio['meses']) == 1:
+        for c in relatorio['contas']:
+            chave = str(c['cta'])
+            soma[chave] = round(soma.get(chave, 0.0) + c['realizado'], 2)
+        return soma
+    for l in relatorio['lancamentos']:
+        if l['mes'] != mes:
+            continue
+        chave = str(l['cta'])
+        soma[chave] = round(soma.get(chave, 0.0) + l['valor'], 2)
+    return soma
+
+
 def montar(orc, analises, razao, dieseis, fretes, revisao, frete_avulso):
     grupos_despesa = orcamento.grupo_de_despesa(orc)
     por_cta = {c['cta']: c for c in orc['contas']}
@@ -358,6 +401,25 @@ def montar(orc, analises, razao, dieseis, fretes, revisao, frete_avulso):
                 'orcadoConferido': conf['conferidas'],
                 'orcadoDivergente': len(conf['divergentes']),
             })
+    # ---- de quem é cada mês do razão: o último a passar por ele, que é o do
+    # relatório de período mais recente, porque `ler_razao` ordena por (fim,
+    # início). O arquivo trimestral de jul–set repete julho com outro número.
+    dono_do_mes, conflitos_razao = {}, []
+    for r in razao:
+        for mes in r['meses']:
+            if mes in dono_do_mes:
+                anterior = dono_do_mes[mes]
+                conflitos_razao.append({
+                    'mes': mes,
+                    'antes': anterior['arquivo'],
+                    'agora': r['arquivo'],
+                    'totalAntes': round(
+                        sum(l['valor'] for l in lancamentos_do_mes(anterior, mes)), 2),
+                    'totalAgora': round(
+                        sum(l['valor'] for l in lancamentos_do_mes(r, mes)), 2),
+                })
+            dono_do_mes[mes] = r
+
     # ---- meses que só o razão tem: entram MARCADOS como parciais
     #
     # O razão vê ~54% do custo (em junho, onde há as duas fontes, ele mostra a
@@ -366,26 +428,28 @@ def montar(orc, analises, razao, dieseis, fretes, revisao, frete_avulso):
     # comparações de desvio e do resultado: sem isso o gráfico mensal sugeriria
     # uma queda de custo que não houve.
     com_analise = {m['mes'] for m in meses}
-    for r in razao:
-        if r['mes'] in com_analise:
+    for mes, r in sorted(dono_do_mes.items()):
+        if mes in com_analise:
             continue
-        realizado = {}
-        for conta in r['contas']:
-            chave = str(conta['cta'])
-            realizado[chave] = round(realizado.get(chave, 0.0) + conta['realizado'], 2)
-            valores.setdefault(chave, {})[str(r['mes'])] = realizado[chave]
+        realizado = realizado_por_conta(r, mes)
+        for chave, v in realizado.items():
+            valores.setdefault(chave, {})[str(mes)] = v
+        total = round(sum(realizado.values()), 2)
         meses.append({
-            'mes': r['mes'],
+            'mes': mes,
             'ano': r['ano'],
             'arquivo': r['arquivo'],
             'fonte': 'razão',
             'origem': 'base',
             'parcial': True,
-            'custoRealizado': round(r['totalRealizado'], 2),
-            'custoOrcadoRelatorio': r['totalOrcado'] or None,
+            'custoRealizado': total,
+            # num arquivo trimestral o orçado impresso é o do trimestre inteiro,
+            # e dividir por três seria inventar número
+            'custoOrcadoRelatorio': (r['totalOrcado'] or None
+                                     if len(r['meses']) == 1 else None),
             'receitaRealizada': None,
             'conciliado': r['conciliacao']['ok'],
-            'somaContas': r['conciliacao']['somaContas'],
+            'somaContas': total,
             'orcadoConferido': None,
             'orcadoDivergente': None,
         })
@@ -423,15 +487,17 @@ def montar(orc, analises, razao, dieseis, fretes, revisao, frete_avulso):
 
     # ---- razão: só o detalhe de fornecedor
     lancamentos, meses_razao = [], []
-    for r in razao:
-        conc = r['conciliacao']
+    for mes, r in sorted(dono_do_mes.items()):
+        do_mes = lancamentos_do_mes(r, mes)
         meses_razao.append({
-            'mes': r['mes'], 'arquivo': r['arquivo'], 'layout': r['layout'],
-            'totalRealizado': r['totalRealizado'], 'conciliado': conc['ok'],
+            'mes': mes, 'arquivo': r['arquivo'], 'layout': r['layout'],
+            'inicio': r['inicio'], 'fim': r['fim'],
+            'totalRealizado': round(sum(l['valor'] for l in do_mes), 2),
+            'conciliado': r['conciliacao']['ok'],
         })
-        for l in r['lancamentos']:
+        for l in do_mes:
             lancamentos.append({
-                'mes': r['mes'], 'cta': l['cta'], 'data': l['data'],
+                'mes': mes, 'cta': l['cta'], 'data': l['data'],
                 'tipo': l['tipo'], 'doc': l['doc'], 'fornecedor': l['fornecedor'],
                 'historico': l['historico'], 'valor': l['valor'],
             })
@@ -464,6 +530,7 @@ def montar(orc, analises, razao, dieseis, fretes, revisao, frete_avulso):
         } for f in fretes],
         'freteRevisao': revisao,
         'conflitosDePdf': conflitos,
+        'conflitosDeRazao': conflitos_razao,
         'centroCusto': {'codigo': orc['centroCusto'], 'nome': orc['nomeCentroCusto']},
         'ano': orc['ano'],
         'arquivoOrcamento': orc['arquivo'],
@@ -516,7 +583,9 @@ def imprimir(orc, analises, razao, dieseis, fretes, revisao, problemas):
         print(f'\nRazão — só detalhe de fornecedor ({len(razao)} arquivos)')
         for r in razao:
             c = r['conciliacao']
-            print(f'  {MESES_CURTOS[r["mes"] - 1]:>4} layout {r["layout"]} '
+            periodo = '-'.join(MESES_CURTOS[m - 1] for m in (r['meses'][0], r['meses'][-1])
+                               ) if len(r['meses']) > 1 else MESES_CURTOS[r['meses'][0] - 1]
+            print(f'  {periodo:>8} layout {r["layout"]} '
                   f'{moeda(r["totalRealizado"]):>16} '
                   f'{"confere" if c["ok"] else "DIVERGENTE"}')
 
@@ -648,6 +717,54 @@ def imprimir_conflitos_de_pdf(dados):
             elif depois is not None and abs(depois - antes) > 0.005:
                 print(f'       {rotulo}: {moeda(antes)} -> {moeda(depois)}  '
                       f'(muda {moeda(depois - antes)})')
+
+
+def imprimir_conflitos_de_razao(dados):
+    """Mês que aparece em dois arquivos de razão, e quanto mudou o detalhe."""
+    conflitos = dados.get('conflitosDeRazao') or []
+    if not conflitos:
+        return
+    print('\nMeses em mais de um razão — vale o de período mais recente')
+    for c in conflitos:
+        print(f'  {MESES_CURTOS[c["mes"] - 1]}: {c["antes"]} -> {c["agora"]}')
+        print(f'       lançado: {moeda(c["totalAntes"])} -> {moeda(c["totalAgora"])}  '
+              f'(muda {moeda(c["totalAgora"] - c["totalAntes"])})')
+
+
+def imprimir_acumulado(dados, analises):
+    """Acumulado do ano impresso no relatório mais novo x soma dos meses.
+
+    O relatório traz uma coluna TOTAL ACUMULADO ANO que acumula desde janeiro,
+    inclusive os meses que ele não mostra. Se ela não bater com a soma dos meses
+    guardados, algum mês ANTERIOR ao período dele foi remexido no ERP depois que
+    o relatório daquele mês saiu — e só um FFOR501 novo cobrindo esse mês diz
+    qual e quanto. É a única conferência que enxerga o passado.
+    """
+    if not analises:
+        return
+    ultimo = analises[-1]
+    rodape = ultimo['rodape']
+    print(f'\nAcumulado do ano — {ultimo["arquivo"]} x soma dos meses do painel')
+    for rotulo, chave, campo in (
+            ('custo  ', analise_custos.RODAPE_CUSTO, 'custoRealizado'),
+            ('receita', analise_custos.RODAPE_RECEITA, 'receitaRealizada')):
+        impresso = ((rodape.get(chave) or {}).get('acumulado') or {}).get('realizado')
+        if impresso is None:
+            continue
+        somado = round(sum(m[campo] or 0.0 for m in dados['meses']
+                           if not m.get('parcial')), 2)
+        delta = round(somado - impresso, 2)
+        marca = 'OK ' if abs(delta) <= 0.02 else 'ATENCAO'
+        print(f'  [{marca}] {rotulo}: impresso {moeda(impresso)}   '
+              f'somado {moeda(somado)}   delta {moeda(delta)}')
+        if abs(delta) > 0.02:
+            fora = [MESES_CURTOS[m - 1] for m in range(1, 13)
+                    if any(x['mes'] == m and not x.get('parcial') for x in dados['meses'])
+                    and m not in ultimo['meses']]
+            print(f'          o relatorio novo so mostra '
+                  f'{", ".join(MESES_CURTOS[m - 1] for m in ultimo["meses"])}; '
+                  f'a diferenca esta em {", ".join(fora) or "nenhum mes anterior"}')
+            print(f'          peça um FFOR501 cobrindo esses meses para saber onde')
 
 
 def imprimir_resumo(dados):
@@ -831,7 +948,9 @@ def main():
     imprimir(orc, analises, razao, dieseis, fretes, revisao, problemas)
     dados = montar(orc, analises, razao, dieseis, fretes, revisao, frete_avulso)
     imprimir_conflitos_de_pdf(dados)
+    imprimir_conflitos_de_razao(dados)
     imprimir_faturamento(dados)
+    imprimir_acumulado(dados, analises)
     imprimir_resumo(dados)
 
     tamanho = gravar_dados_js(dados, RAIZ / 'js' / 'dados.js')
