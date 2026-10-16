@@ -7,11 +7,16 @@ de origem.
 Versão navegável, para compartilhar:
 <https://claude.ai/code/artifact/9d744066-d633-485d-b748-37c864c77f00>
 
-> **Atualizado com o relatório `07 a 09`.** Ele trouxe agosto e setembro e, sem
-> estar no pedido, **refez julho**: a receita do mês caiu R$ 551.949,85. Agora
-> são **nove meses de custo e oito de receita** — setembro ainda não tem receita
-> lançada, então ele entra no custo e fica fora do resultado. Duas pendências
-> novas apareceram, as duas do lado do ERP.
+> **Atualizado com o relatório `07 a 09` e com as planilhas de frete novas.** O
+> relatório trouxe agosto e setembro e, sem estar no pedido, **refez julho**: a
+> receita do mês caiu R$ 551.949,85. São **nove meses de custo e oito de
+> receita** — setembro ainda não tem receita lançada, então entra no custo e fica
+> fora do resultado.
+>
+> Do lado do frete: chegaram **agosto e setembro**, e o arquivo do agro de maio
+> provou que **a aba `ABR-26` é de maio**. Com isso maio deixou de ser o mês sem
+> planilha — **agora é abril**. Duas pendências novas do lado do ERP, duas do
+> frete resolvidas.
 
 | | |
 |---|---|
@@ -160,15 +165,33 @@ receita do mês** — não é erro de planilha, é faturamento que faltou.
 Vale conferir se esses R$ 223 mil foram faturados em outro mês ou se ficaram
 para trás. É o único item desta lista que é dinheiro, não classificação.
 
-### FC-1 · Datas digitadas erradas em duas abas — *contornado*
+### FC-1 · A aba `ABR-26` é de maio — *resolvido* · novo
 
-Em `JAN-26` as 712 linhas de detalhe estão datadas de **agosto de 2025**; em
-`ABR-26` as 848 linhas estão datadas de **maio de 2026**. Você confirmou que o
-mês certo é o do nome da aba, e o painel trabalha assim (constante
-`MES_CONFIRMADO` no topo de `atualizar.py`).
+Duas abas têm nome e datas em desacordo, e **a resposta é diferente em cada
+uma**:
 
-**Por que ainda está aqui:** a correção vive no código do painel, não na
-planilha. Quem abrir o arquivo continua vendo as datas erradas.
+| Aba | Linhas | Datas | Vence | Por quê |
+|---|---|---|---|---|
+| `JAN-26` | 712 | ago/2025 | **o nome** | ago/2025 é um ano e um mês antes do exercício: data furada, não mês trocado |
+| `ABR-26` | 848 | 01/05 a 31/05/2026 | **a data** | prova de fora da planilha, abaixo |
+
+A prova da aba `ABR-26` veio com os arquivos do agro de maio. Dentro dela há 109
+viagens com CR `AGRO` somando **R$ 147.298,31**. O arquivo
+`Cms que rotaram no agro Maio-26.xlsx`, criado em 08/06/2026 e intitulado
+**"FRETE CARRADA MAIO DE 2026"**, tem 109 viagens somando **R$ 147.298,31** — e
+as **109 de 109 linhas são idênticas**: mesma data, mesmo veículo, mesmo valor,
+mesma nota fiscal. As 848 linhas cobrem de 1º a 31 de maio, um mês civil
+inteiro, não uma sobra de fim de mês.
+
+**O que mudou no painel:** a aba `ABR-26` passou a valer como **maio**
+(R$ 1.378.218,13 em 11 obras). Com isso **a pendência de maio caiu** — a
+planilha existe, só está com o nome errado — e **abril** é que ficou sem frete
+carrada.
+
+**O que resolve de vez:** renomear a aba na planilha. Enquanto não renomeia, a
+correção vive em `MES_CONFIRMADO` no topo de `atualizar.py`, e o painel mostra
+"aba RESUMO ABR-26 — mês confirmado" na linha de maio para ninguém achar que é
+defeito.
 
 ### FC-2 · O resumo de julho somou uma obra dentro da outra — *contornado*
 
@@ -190,11 +213,19 @@ nos dois; só a divisão por obra está errada no resumo.
 
 `FRETE CARRADAS JUL-26 ` — com espaço no fim do nome — dentro do arquivo
 principal traz as mesmas 807 linhas de junho, com as mesmas datas e o mesmo total
-de R$ 1.604.128,61. O julho verdadeiro está em
-`BASE FRETE CARRADAS ENVIO JUL - 26`, e é esse que o painel usa.
+de R$ 1.604.128,61. O julho verdadeiro está na aba `FRETE CARRADAS JUL-26` (sem
+o espaço), no mesmo arquivo.
 
-**Sugestão:** apagar a aba duplicada. Quem somar as abas do arquivo hoje conta
-junho duas vezes.
+Antes o painel escapava usando o arquivo `BASE FRETE CARRADAS ENVIO JUL - 26`,
+cujo resumo de julho era o único preenchido. Na planilha nova o resumo de julho
+está preenchido também, e a escolha pela ordem das abas pegaria a cópia de junho
+— somando junho duas vezes, R$ 265.842,66 a mais em julho. **Agora quem desempata
+é a data dos lançamentos**: entre duas abas de detalhe do mesmo mês, vale a que
+tem as datas do mês (`_escolher_detalhe` em `leitores/frete_carrada.py`). O
+terminal lista a aba descartada a cada execução.
+
+**Sugestão, que continua valendo:** apagar a aba duplicada. Quem somar as abas
+do arquivo à mão ainda conta junho duas vezes.
 
 ### ERP-2 · O razão não vê metade do custo — *entendido, não é defeito*
 
@@ -228,9 +259,10 @@ conferência. A aba Dados mostra quantas células conferiram em cada arquivo.
 
 ## Parte 2 — O que ainda falta coletar
 
-Um item saiu (julho ficou quase fechado) e dois entraram com agosto e setembro.
-Só o primeiro bloqueia número de resultado; o resto é **composição** da receita —
-quanto de cada mês veio de frete carrada e quanto veio do outro serviço.
+As planilhas de frete novas fecharam agosto, setembro e maio, e abriram abril.
+Só o primeiro item abaixo bloqueia número de resultado; o resto é **composição**
+da receita — quanto de cada mês veio de frete carrada e quanto veio do outro
+serviço.
 
 1. **A receita de setembro.** O ERP traz o mês com custo (R$ 2.455.547,57) e com
    a receita **em branco**. O painel não inventa zero: setembro entra no custo e
@@ -238,47 +270,60 @@ quanto de cada mês veio de frete carrada e quanto veio do outro serviço.
    única coisa que falta para o trimestre fechar. Pode ser que ela entre sozinha
    no próximo `FFOR501` — foi o que aconteceu com maio e junho.
 
-2. **O frete (não carrada) de abril, junho e julho.** Com a receita do ERP
-   conhecida, o valor que falta em cada mês é uma subtração, não um chute:
+2. **O frete (não carrada) de maio a agosto.** Com a receita do ERP conhecida,
+   o valor que falta em cada mês é uma subtração, não um chute:
 
    | Mês | Receita do ERP | − frete carrada | = frete que falta |
    |---|---|---|---|
-   | abril | 2.357.981,15 | 1.378.218,13 | **979.763,02** |
+   | maio | 2.386.015,65 | 1.378.218,13 | **1.007.797,52** |
    | junho | 2.385.093,92 | 1.604.128,61 | **780.965,31** |
    | julho | 1.495.586,55 | 1.338.285,95 | **157.300,60** |
+   | agosto | 2.316.015,17 | 1.364.314,60 | **951.700,57** |
 
-   Julho mudou muito aqui: com a receita revista (`ERP-3`), o frete que falta caiu
-   de R$ 709.250,45 para R$ 157.300,60. Os três valores enviados que ainda não
-   têm mês são R$ 994.097,85 · R$ 659.741,89 · R$ 775.475,91, e **nenhum fecha
-   nenhum desses meses**: o mais próximo é 775.475,91 contra os 780.965,31 de
-   junho, e erra por R$ 5.489,40. Em janeiro, fevereiro e março o encaixe foi de
-   1 a 2 centavos, então essa diferença não é arredondamento — ou falta dado, ou
-   esses três valores são de outros meses. Preencher em
-   `planilhas/frete/faturamento-frete.csv`.
+   Julho mudou muito aqui: com a receita revista (`ERP-3`), o frete que falta
+   caiu de R$ 709.250,45 para R$ 157.300,60. Abril saiu da tabela porque agora é
+   ele que está sem frete carrada (`FC-1`), e sem as duas parcelas não dá para
+   subtrair. Os três valores enviados que ainda não têm mês são R$ 994.097,85 ·
+   R$ 659.741,89 · R$ 775.475,91, e **nenhum fecha nenhum desses meses**: o mais
+   próximo é 775.475,91 contra os 780.965,31 de junho, errando por R$ 5.489,40;
+   depois 994.097,85 contra os 1.007.797,52 de maio, errando por R$ 13.699,67.
+   Em janeiro, fevereiro e março o encaixe foi de 1 a 2 centavos, então essa
+   diferença não é arredondamento — ou falta dado, ou esses três valores são de
+   outros meses. Preencher em `planilhas/frete/faturamento-frete.csv`.
 
-3. **O frete carrada de maio, agosto e setembro.** Maio não existe em nenhuma
-   aba — a planilha do mês nunca foi feita. Agosto e setembro são novos: a última
-   planilha enviada vai até julho. Sem elas, esses três meses não têm como
-   separar a receita em duas parcelas.
+3. **O frete carrada de abril.** Não existe em nenhuma aba: `ABR-26` é de maio
+   (`FC-1`) e não há outra. Abril é o único mês do ano sem a planilha, e sem ela
+   não dá para separar a receita de abril em duas parcelas.
 
-4. **Confirmar se `TUCUMA DUERE` é a mesma obra que `DUERE-TO`.** É a única
-   união da normalização que não tem prova de valor (ver Parte 3). Se forem
-   obras diferentes, some a linha `TUCUMADUERE` de `OBRAS_NORMALIZADAS` em
-   `leitores/frete_carrada.py` e os R$ 62.005,29 de janeiro se separam de novo.
+4. **Confirmar duas duplas de nome que podem ser a mesma obra.** Nenhuma das
+   duas tem prova de valor, então **não** foram unidas — ficam como obras
+   separadas no painel até alguém confirmar:
+
+   | Nomes | Onde aparecem | Valor | Situação |
+   |---|---|---|---|
+   | `EDECOMPEC` · `EDECONPEC` | set · jul | 5.212,80 · 25.858,75 | separados; diferem só no "M"/"N" |
+   | `TUCUMA DUERE` · `DUERE-TO` | jan · vários | 62.005,29 | **já unidos**, sem prova |
+
+   `TUCUMA DUERE` é a única união da normalização sem prova de valor (ver
+   Parte 3): se forem obras diferentes, some a linha `TUCUMADUERE` de
+   `OBRAS_NORMALIZADAS` em `leitores/frete_carrada.py`. `EDECOMPEC`/`EDECONPEC`
+   é o caso inverso — se forem a mesma, acrescente a linha.
 
 5. **Um `FFOR501` de jan–jun tirado hoje**, para localizar os R$ 2.060,21 do
    `ERP-4`.
 
-6. **Outubro em diante.** O relatório `FFOR501` do próximo trimestre entra sem
-   ajuste de código: salvar em `planilhas/analise/` e rodar `python atualizar.py`.
-   O razão (`detalhado.xlsx`) também pode vir trimestral — o painel resolve a
-   sobreposição sozinho e avisa o que mudou.
+6. **Outubro em diante.** Tudo entra sem ajuste de código. O `FFOR501` e o razão
+   (`detalhado.xlsx`) vão para `planilhas/analise/` e `planilhas/inversoes/`,
+   podem vir trimestrais e podem repetir meses — o painel resolve a sobreposição
+   sozinho e avisa o que mudou de valor. A planilha de frete vai para
+   `planilhas/frete/`, e o mês repetido fica com o arquivo que concilia. Depois
+   é só rodar `python atualizar.py`.
 
 ---
 
 ## Parte 3 — O que saiu da lista
 
-### As obras foram normalizadas: 27 grafias, 19 obras
+### As obras foram normalizadas: 42 grafias, 24 obras
 
 O ranking por obra estava partido — a mesma obra escrita de até cinco formas
 aparecia como cinco linhas menores. Cada união está registrada em
@@ -292,9 +337,17 @@ detalhe do mesmo mês trazendo o mesmo centavo sob nomes diferentes:
 | mar | `MANUTENÇAO DE VIAS AGETO(AUGUSTINOPOLIS -TO` | `AUGUSTINOPOLIS-TO` | 2.251,20 |
 | mar | `OLINDA NOVA - MA (PINHEIRO)` | `OLINDA NOVA - MA` | 272.743,96 |
 | mar | `CONSORCIO TOCANTIS (PALMEIROPOLIS-TO)` | `PALMEIROPOLIS-TO` | 34.282,75 |
-| abr | `AUGUSTINOPOLIS-TO` | `AUGUSTINOPOLIS TO (EDEC)` | 59.379,04 |
-| abr | `UA PINHEIRO - MA` | `UA PINHEIRO` | 168.052,16 |
-| abr | `UA OLINDA NOVA - MA` | `UA OLINDA NOVA` | 49.717,48 |
+| mai | `AUGUSTINOPOLIS-TO` | `AUGUSTINOPOLIS TO (EDEC)` | 59.379,04 |
+| mai | `UA PINHEIRO - MA` | `UA PINHEIRO` | 168.052,16 |
+| mai | `UA OLINDA NOVA - MA` | `UA OLINDA NOVA` | 49.717,48 |
+| ago | `AUGUSTINOPOLIS(EDEC)` | `AUGUSTINOPOLIS -TO` | 57.873,02 |
+| ago | `PALMEROPOLIS-TO` | `PALMEIROPOLIS-TO` | 19.627,80 |
+| set | `JC GONTIJO` | `JC GOTIJO` | 51.233,82 |
+
+As três últimas vieram com agosto e setembro. Duas são letra faltando
+(`PALMEROPOLIS` sem o "I", `GOTIJO` sem o "N") e a prova é a mesma: mesmo
+centavo, mesmo mês, resumo contra detalhe. (As linhas de maio aparecem na aba
+chamada `ABR-26` — ver `FC-1`.)
 
 Duas coisas que essa conferência impediu:
 
@@ -303,8 +356,7 @@ Duas coisas que essa conferência impediu:
   obras diferentes. O parêntese indica a unidade, não a obra. Juntar as duas
   teria somado duas obras distintas.
 - **`TUCUMA DUERE` foi unida sem prova de valor.** Ela nunca aparece no mesmo
-  resumo que `DUERE-TO`, o que permite a união mas não a prova. É o item 3 da
-  Parte 2.
+  resumo que `DUERE-TO`, o que permite a união mas não a prova. Está na Parte 2.
 
 Há uma guarda no script para isso: se duas grafias que o mapa une caírem no
 mesmo resumo, ele reclama em vez de somar em silêncio.
@@ -343,6 +395,11 @@ ano** (−R$ 1.325.085,58, atrás só de fevereiro) e o de **menor receita**.
 - **Orçado:** 731 das 735 células conferem exatamente com a planilha do programa
   orçamentário (176 + 185 + 185 + 185); as 4 restantes são o caso `PDF-1`.
 
+- **Frete carrada:** nos 8 meses, resumo e detalhe batem obra a obra, menos os
+  dois casos conhecidos — janeiro (`REC-1`) e julho (`FC-2`). Agosto e setembro
+  fecham ao centavo. As 848 linhas de maio e as 109 do arquivo do agro batem
+  linha a linha (`FC-1`).
+
 Fontes: análise de custos `FFOR501` (jan–set, 4 relatórios) · programa
 orçamentário `F.AP.05` · razão `FFOR001/FFOR401` (jan–set) · frete carrada
-(jan–abr, jun–jul) · consumo de diesel `SECE214`.
+(jan–mar, mai–set) · consumo de diesel `SECE214`.

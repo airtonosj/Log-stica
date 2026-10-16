@@ -14,19 +14,20 @@ consolidação feita à mão, e já errou de duas formas diferentes.
 
 QUATRO ARMADILHAS NESTES ARQUIVOS, todas encontradas na conferência
 ------------------------------------------------------------------
-1. **O nome da aba nem sempre é o mês dos lançamentos.** Em `ABR-26` as 848
-   linhas de detalhe têm data de MAIO/2026; em `JAN-26` as 712 linhas têm data de
-   AGOSTO/2025. Por isso o leitor devolve o mês do nome E o mês real das datas, e
-   marca `conflitoDeData` quando divergem — quem decide o que fazer é o humano,
-   não este arquivo.
+1. **O nome da aba nem sempre é o mês dos lançamentos, e não há regra única.**
+   Em `JAN-26` as 712 linhas têm data de AGOSTO/2025 e o certo é o nome; em
+   `ABR-26` as 848 linhas cobrem 01/05 a 31/05/2026 e o certo é a DATA — a aba é
+   de maio. Por isso o leitor devolve o mês do nome E o mês real das datas, e
+   marca `conflitoDeData` quando divergem: quem decide caso a caso é o humano,
+   em `MES_CONFIRMADO` (atualizar.py), não este arquivo.
 
 2. **O detalhe tem uma linha de TOTAL no fim**, sem CR e sem data. Somar tudo dá
    exatamente o dobro do valor real. A linha é identificada e descartada.
 
-3. **Abas duplicadas.** `FRETE CARRADAS JUL-26 ` (com espaço no fim) dentro do
-   arquivo principal é uma cópia de junho, não julho. O julho de verdade está no
-   arquivo `BASE FRETE CARRADAS ENVIO JUL - 26.xlsx`. Resumo sem valor nenhum é
-   ignorado.
+3. **Abas duplicadas.** `FRETE CARRADAS JUL-26 ` (com espaço no fim) é uma
+   cópia de junho e convive, no mesmo arquivo, com o `FRETE CARRADAS JUL-26` de
+   verdade. Quem desempata é a DATA dos lançamentos, não a ordem das abas: a
+   cópia traz junho, o julho real traz julho. Ver `_escolher_detalhe`.
 
 4. **A mesma obra aparece com até quatro grafias diferentes**, e não é só
    pontuação: `OLINDA NOVA - MA (PINHEIRO)` no resumo é `OLINDA NOVA - MA` no
@@ -69,10 +70,14 @@ _ANO = re.compile(r'(20\d{2})')
 OBRAS_NORMALIZADAS = {
     'AUGUSTINOPOLISTO': 'AUGUSTINOPOLIS - TO',
     'AUGUSTINOPOLISTOEDEC': 'AUGUSTINOPOLIS - TO',
+    'AUGUSTINOPOLISEDEC': 'AUGUSTINOPOLIS - TO',
     'MANUTENCAODEVIASAGETOAUGUSTINOPOLISTO': 'AUGUSTINOPOLIS - TO',
 
     'PALMEIROPOLISTO': 'PALMEIROPOLIS - TO',
+    'PALMEROPOLISTO': 'PALMEIROPOLIS - TO',
     'CONSORCIOTOCANTISPALMEIROPOLISTO': 'PALMEIROPOLIS - TO',
+
+    'JCGOTIJO': 'JC GONTIJO',
 
     'OLINDANOVAMA': 'UA OLINDA NOVA - MA',
     'OLINDANOVAMAPINHEIRO': 'UA OLINDA NOVA - MA',
@@ -103,12 +108,21 @@ PROVA_DA_NORMALIZACAO = [
      'como': 'março: o resumo traz 2.251,20 em "MANUTENÇAO DE VIAS AGETO" e o '
              'detalhe traz os mesmos 2.251,20 em "AUGUSTINOPOLIS-TO". Abril: '
              '59.379,04 no resumo como "AUGUSTINOPOLIS-TO" e no detalhe como '
-             '"AUGUSTINOPOLIS TO (EDEC)".'},
+             '"AUGUSTINOPOLIS TO (EDEC)". Agosto: 57.873,02 no resumo como '
+             '"AUGUSTINOPOLIS(EDEC)" e no detalhe como "AUGUSTINOPOLIS -TO".'},
     {'obra': 'PALMEIROPOLIS - TO',
      'grafias': ['PALMEIROPOLIS-TO', 'CONSORCIO TOCANTIS (PALMEIROPOLIS-TO)'],
      'prova': 'forte',
      'como': 'março: 34.282,75 no resumo como "CONSORCIO TOCANTIS '
-             '(PALMEIROPOLIS-TO)" e no detalhe como "PALMEIROPOLIS-TO".'},
+             '(PALMEIROPOLIS-TO)" e no detalhe como "PALMEIROPOLIS-TO". '
+             'Agosto: 19.627,80 no resumo como "PALMEROPOLIS-TO" (sem o "I") e '
+             'no detalhe como "PALMEIROPOLIS-TO".'},
+    {'obra': 'JC GONTIJO',
+     'grafias': ['JC GONTIJO', 'JC GOTIJO'],
+     'prova': 'forte',
+     'como': 'setembro: 51.233,82 no resumo como "JC GONTIJO" e no detalhe '
+             'como "JC GOTIJO" — falta o "N". O canônico é com "N", que é o '
+             'nome da construtora.'},
     {'obra': 'UA OLINDA NOVA - MA',
      'grafias': ['OLINDA NOVA - MA', 'OLINDA NOVA-MA',
                  'OLINDA NOVA - MA (PINHEIRO)', 'UA OLINDA NOVA',
@@ -382,6 +396,26 @@ def divergencias_por_obra(meses):
     return achados
 
 
+def _escolher_detalhe(candidatos, mes, soma_resumo):
+    """Qual aba de detalhe é a do mês, quando o arquivo tem mais de uma.
+
+    Pegar a primeira pegava a cópia de junho rotulada como julho e somava junho
+    duas vezes. O desempate é a data dos lançamentos. Quando NENHUMA bate — o
+    caso de `ABR-26`, cujas 848 linhas são de maio — vale a primeira, como
+    antes: aí a divergência é de mês, não de aba, e quem resolve é o humano.
+    """
+    if not candidatos:
+        return None
+    do_mes = [c for c in candidatos if c['mesReal'] == mes]
+    if not do_mes:
+        return candidatos[0]
+    if len(do_mes) > 1:
+        bate = [c for c in do_mes if abs(c['somaDetalhe'] - soma_resumo) <= 0.02]
+        if bate:
+            return bate[0]
+    return do_mes[0]
+
+
 def ler(caminho):
     """Lê um arquivo de frete carrada. Devolve lista de meses."""
     abas = xlsx_raw.abrir(caminho)
@@ -407,16 +441,13 @@ def ler(caminho):
         soma_itens = round(sum(i['valor'] for i in itens), 2)
 
         # o detalhe do mesmo mês: é a fonte do valor, e o resumo confere
-        por_cr_det, conf, grafias_det = None, {'temDetalhe': False}, {}
+        candidatos = []
         for det in detalhes.get(mes, []):
-            por_cr, contagem, soma_det, qtd, grafias_det = _ler_detalhe(det)
+            por_cr, contagem, soma_det, qtd, grafias = _ler_detalhe(det)
             if not contagem:
                 continue
-            principal = max(contagem, key=contagem.get)
-            mes_real = int(principal.split('-')[1])
-            ano_real = int(principal.split('-')[0])
-            por_cr_det = por_cr
-            conf = {
+            ano_real, mes_real = (int(x) for x in max(contagem, key=contagem.get).split('-'))
+            candidatos.append({
                 'temDetalhe': True,
                 'aba': det.nome,
                 'somaDetalhe': soma_det,
@@ -427,8 +458,15 @@ def ler(caminho):
                 'delta': round(soma_det - soma_itens, 2),
                 'confere': abs(soma_det - soma_itens) <= 0.02,
                 'conflitoDeData': (mes_real != mes) or (ano is not None and ano_real != ano),
-            }
-            break
+                '_porCR': por_cr,
+                '_grafias': grafias,
+            })
+        conf = _escolher_detalhe(candidatos, mes, soma_itens) or {'temDetalhe': False}
+        por_cr_det = conf.pop('_porCR', None)
+        grafias_det = conf.pop('_grafias', {})
+        if len(candidatos) > 1:
+            conf['abasDescartadas'] = [c['aba'] for c in candidatos
+                                       if c['aba'] != conf.get('aba')]
 
         saida.append({
             'mes': mes,

@@ -54,19 +54,30 @@ MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun',
 # na tela sem regerar nada — e mantém o total conferindo com o rodapé do PDF
 # quando o botão está ligado.
 # ---------------------------------------------------------------------------
-# FRETE CARRADA — correções de mês confirmadas com quem mantém a planilha
+# FRETE CARRADA — mês de cada aba, confirmado com quem mantém a planilha
 #
-# Duas abas têm as datas dos lançamentos digitadas erradas. O mês correto é o do
-# NOME da aba; as datas é que estão furadas. Registrado aqui para o painel parar
-# de alertar sobre um conflito já resolvido, e para o próximo a mexer no código
-# saber por quê.
+# Em duas abas o nome e as datas discordam, e a decisão é diferente em cada uma:
+#
+#   JAN-26  vence o NOME. As 712 linhas estão datadas de ago/2025, um ano e um
+#           mês antes do exercício — data furada, não mês trocado.
+#
+#   ABR-26  vence a DATA. As 848 linhas cobrem 01/05 a 31/05/2026, um mês civil
+#           inteiro, e a prova veio de fora da planilha: o arquivo
+#           `Cms que rotaram no agro Maio-26.xlsx` (criado em 08/06/2026,
+#           intitulado "FRETE CARRADA MAIO DE 2026") tem 109 viagens somando
+#           R$ 147.298,31, idênticas linha a linha — data, veículo, valor e nota
+#           fiscal — às 109 viagens com CR `AGRO` dentro desta aba. A aba é de
+#           MAIO; o nome é que está errado. Confirmado em 16/10/2026.
+#           Consequência: abril é que não tem planilha.
 MES_CONFIRMADO = {
     'RESUMO JAN-26': (1, 'datas digitadas como ago/2025; os dados são de janeiro'),
-    'RESUMO ABR-26': (4, 'datas digitadas como mai/2026; os dados são de abril'),
+    'RESUMO ABR-26': (5, 'a aba se chama ABR-26 mas as 848 linhas são de maio; '
+                         'provado pelo arquivo do agro de maio, idêntico linha '
+                         'a linha ao trecho AGRO desta aba'),
 }
 
 # Meses que sabidamente não existem em nenhuma planilha de frete carrada.
-MESES_SEM_FRETE_CARRADA = {5: 'maio: a planilha nunca foi feita'}
+MESES_SEM_FRETE_CARRADA = {4: 'abril: a planilha nunca foi feita'}
 
 # ---------------------------------------------------------------------------
 # FRETE CARRADA — o detalhe é a fonte, o resumo confere
@@ -212,8 +223,27 @@ def ler_frete_avulso(pasta):
     return porMes, problemas
 
 
+def qualidade_do_frete(r):
+    """Quanto dá para confiar no mês lido, para desempatar arquivos.
+
+    Em setembro o arquivo-mestre traz o detalhe com a coluna CR VAZIA: o total
+    está certo, mas tudo cai em '(sem obra na planilha)' e o ranking por obra
+    fica cego. O arquivo de envio do mês tem a coluna preenchida. Ordem
+    alfabética de nome de arquivo não sabe disso — conciliação e atribuição de
+    obra sabem.
+    """
+    c = r['conferencia']
+    sem_obra = any(i['cr'].startswith('(sem obra')
+                   for i in (r.get('porCRDetalhe') or []))
+    return (1 if c.get('confere') else 0, 0 if sem_obra else 1)
+
+
 def ler_frete(pasta):
-    """Lê as planilhas de frete carrada. Mês repetido: o último arquivo vence."""
+    """Lê as planilhas de frete carrada.
+
+    Mês repetido: vence o arquivo de melhor qualidade (ver
+    `qualidade_do_frete`); empatou, vence o último, como antes.
+    """
     meses, problemas = {}, []
     for caminho in arquivos(pasta, 'frete', ('.xlsx',)):
         try:
@@ -232,8 +262,13 @@ def ler_frete(pasta):
                 continue
             r['arquivo'] = caminho.name
             if r['mes'] in meses:
+                antigo = meses[r['mes']]
+                fica = r if qualidade_do_frete(r) >= qualidade_do_frete(antigo) else antigo
                 print(f'  aviso: frete de {MESES_CURTOS[r["mes"] - 1]} aparece em '
-                      f'{meses[r["mes"]]["arquivo"]} e em {caminho.name}; o último vence')
+                      f'{antigo["arquivo"]} e em {caminho.name}; '
+                      f'fica {fica["arquivo"]}')
+                meses[r['mes']] = fica
+                continue
             meses[r['mes']] = r
     lista = [meses[m] for m in sorted(meses)]
     unidos = frete_carrada.unificar_grafias(lista)
@@ -604,11 +639,16 @@ def imprimir(orc, analises, razao, dieseis, fretes, revisao, problemas):
             if c.get('temDetalhe') and not c.get('confere'):
                 print(f'       ! resumo x detalhe divergem em {moeda(c["delta"])} '
                       f'({moeda(c["somaDetalhe"])} no detalhe)')
-            if c.get('conflitoDeData'):
+            if f.get('mesConfirmado'):
+                print(f'       mês confirmado: {f["mesConfirmado"]}')
+            elif c.get('conflitoDeData'):
                 print(f'       ! CONFLITO DE DATA: a aba diz '
                       f'{MESES_CURTOS[f["mes"] - 1]}/{f["ano"]} mas as datas dos '
                       f'lançamentos são de '
                       f'{MESES_CURTOS[c["mesReal"] - 1]}/{c["anoReal"]}')
+            if c.get('abasDescartadas'):
+                print(f'       abas de detalhe descartadas (datas de outro mês): '
+                      f'{", ".join(repr(a) for a in c["abasDescartadas"])}')
         unidos = revisao['grafiasUnidas']
         if unidos:
             decididas = [u for u in unidos if u['origem'] == 'mapa']

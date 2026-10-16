@@ -1212,6 +1212,8 @@ function renderFrete(v) {
         const m = porMes[meses12[i]];
         if (!m) return null;
         const notas = [`${m.porCR.length} obras · aba ${m.aba}`];
+        // a aba de maio se chama ABR-26; sem dizer por quê, parece defeito
+        if (m.mesConfirmado) notas.push(`Mês confirmado: ${m.mesConfirmado}`);
         if (m.conflitoDeData) {
           notas.push(`Atenção: as datas dos lançamentos são de `
             + `${fmt.mesLongo(m.mesReal)}/${m.anoReal}, não deste mês.`);
@@ -1226,6 +1228,7 @@ function renderFrete(v) {
     meses12.filter(m => porMes[m]).map(m => {
       const x = porMes[m];
       const obs = [];
+      if (x.mesConfirmado) obs.push(`aba ${x.aba} — mês confirmado`);
       if (x.conflitoDeData) obs.push(`datas de ${fmt.mes(x.mesReal)}/${x.anoReal}`);
       if (x.confere === false) obs.push('resumo ≠ detalhe');
       return [fmt.mesLongo(m), fmt.moeda(x.total), fmt.n0(x.porCR.length),

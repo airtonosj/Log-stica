@@ -44,17 +44,28 @@ mes;valor;observacao
 # Agora que a receita do ERP é conhecida, o frete que falta em cada mês é uma
 # subtração — não um chute. Estes são os valores que FECHARIAM cada mês:
 #
-#   abril   2.357.981,15 - 1.378.218,13 =   979.763,02
-#   junho   2.385.093,92 - 1.604.128,61 =   780.965,31
-#   julho   2.047.536,40 - 1.338.285,95 =   709.250,45
-#   maio    2.386.015,65 - (sem carrada) = não dá para separar
+#   maio      2.386.015,65 - 1.378.218,13 = 1.007.797,52
+#   junho     2.385.093,92 - 1.604.128,61 =   780.965,31
+#   julho     1.495.586,55 - 1.338.285,95 =   157.300,60
+#   agosto    2.316.015,17 - 1.364.314,60 =   951.700,57
+#   abril     2.357.981,15 - (sem carrada) = não dá para separar
+#   setembro  o ERP ainda não lançou receita do mês
+#
+# Dois números mudaram muito desde a versão anterior deste arquivo, e os dois
+# por motivo documentado:
+#   - JULHO caiu de 709.250,45 para 157.300,60 porque o relatório `07 a 09`
+#     revisou a receita do mês para baixo em 551.949,85 (ver ERP-3).
+#   - ABRIL e MAIO trocaram de lugar: a aba `ABR-26` é de maio, provado pelo
+#     arquivo do agro (ver FC-1). Abril é que ficou sem planilha de carrada.
 #
 # Os três valores enviados que ainda não têm mês são
 #   R$ 994.097,85 · R$ 659.741,89 · R$ 775.475,91
-# e NENHUM fecha nenhum dos meses acima: o mais próximo é 775.475,91 contra os
-# 780.965,31 de junho, e erra por R$ 5.489,40. Em janeiro, fevereiro e março o
-# encaixe tinha sido de 1 a 2 centavos, então essa diferença não é
-# arredondamento — falta dado, ou os três valores são de outros meses.
+# e NENHUM fecha nenhum dos meses acima: o mais próximo continua sendo
+# 775.475,91 contra os 780.965,31 de junho, errando por R$ 5.489,40; depois
+# 994.097,85 contra os 1.007.797,52 de maio, errando por R$ 13.699,67. Em
+# janeiro, fevereiro e março o encaixe tinha sido de 1 a 2 centavos, então essa
+# diferença não é arredondamento — falta dado, ou os três valores são de outros
+# meses.
 #
 # NÃO PREENCHI esses meses por subtração de propósito: seria transformar a
 # conferência em dado, e aí ela deixaria de conferir qualquer coisa.
