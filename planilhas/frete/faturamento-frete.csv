@@ -48,8 +48,12 @@ mes;valor;observacao
 #   junho     2.385.093,92 - 1.604.128,61 =   780.965,31
 #   julho     1.495.586,55 - 1.338.285,95 =   157.300,60
 #   agosto    2.316.015,17 - 1.364.314,60 =   951.700,57
+#   setembro  2.893.504,51 - 1.104.664,05 = 1.788.840,46
 #   abril     2.357.981,15 - (sem carrada) = não dá para separar
-#   setembro  o ERP ainda não lançou receita do mês
+#
+# SETEMBRO pede 1.788.840,46 do outro serviço — quase o dobro do maior valor já
+# confirmado (1.066.086,43, em março). Ou o mês rodou muito fora da carrada, ou
+# parte da receita de setembro é outra coisa. Só o número do faturamento diz.
 #
 # Dois números mudaram muito desde a versão anterior deste arquivo, e os dois
 # por motivo documentado:
